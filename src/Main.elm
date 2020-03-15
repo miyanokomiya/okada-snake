@@ -7,6 +7,9 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick)
 import Json.Decode as Decode
+import String.Interpolate exposing (interpolate)
+import Svg
+import Svg.Attributes
 
 
 main : Program () Model Msg
@@ -74,7 +77,12 @@ init : () -> ( Model, Cmd Msg )
 init _ =
     ( { field =
             Array.repeat 10 <| Array.repeat 10 <| Empty
-      , player = [ { position = ( 0, 0 ), okada = Oka } ]
+      , player =
+            [ { position = ( 0, cellCount - 4 ), okada = Oka }
+            , { position = ( 0, cellCount - 3 ), okada = Da }
+            , { position = ( 0, cellCount - 2 ), okada = Oka }
+            , { position = ( 0, cellCount - 1 ), okada = Da }
+            ]
       , steps = []
       }
     , Cmd.none
@@ -97,16 +105,16 @@ update msg model =
                 position =
                     case step of
                         Left ->
-                            ( 0, -1 )
-
-                        Right ->
-                            ( 0, 1 )
-
-                        Up ->
                             ( -1, 0 )
 
-                        Down ->
+                        Right ->
                             ( 1, 0 )
+
+                        Up ->
+                            ( 0, -1 )
+
+                        Down ->
+                            ( 0, 1 )
 
                         Other ->
                             ( 0, 0 )
@@ -120,25 +128,52 @@ update msg model =
 
 
 movePlayer : Position -> Snake -> Snake
-movePlayer ( x, y ) player =
-    List.indexedMap
-        (\i snakeCell ->
-            if i == 0 then
-                { snakeCell | position = ( x, y ) }
+movePlayer ( dx, dy ) player =
+    Array.get 0 (Array.fromList player)
+        |> Maybe.map
+            (\top ->
+                let
+                    ( topX, topY ) =
+                        top.position
 
-            else
-                { snakeCell
-                    | position =
-                        Array.get (i - 1) (Array.fromList player)
-                            |> Maybe.map (\c -> c.position)
-                            |> Maybe.withDefault snakeCell.position
-                }
-        )
-        player
+                    nextTopX =
+                        Basics.min (cellCount - 1) (Basics.max 0 (topX + dx))
+
+                    nextTopY =
+                        Basics.min (cellCount - 1) (Basics.max 0 (topY + dy))
+                in
+                if List.member ( nextTopX, nextTopY ) (List.map (\snakeCell -> snakeCell.position) player) then
+                    player
+
+                else
+                    List.indexedMap
+                        (\i snakeCell ->
+                            if i == 0 then
+                                { snakeCell | position = ( nextTopX, nextTopY ) }
+
+                            else
+                                { snakeCell
+                                    | position =
+                                        Array.get (i - 1) (Array.fromList player)
+                                            |> Maybe.map (\c -> c.position)
+                                            |> Maybe.withDefault snakeCell.position
+                                }
+                        )
+                        player
+            )
+        |> Maybe.withDefault player
 
 
 
 -- VIEW
+
+
+cellCount =
+    10
+
+
+cellSize =
+    40
 
 
 view : Model -> Html Msg
@@ -150,7 +185,7 @@ view model =
         , style "align-items" "center"
         ]
         [ div []
-            [ viewBoard model.field
+            [ viewField model
             ]
         , div
             [ style "margin" "0.5rem"
@@ -166,53 +201,87 @@ view model =
                 , viewButton Right "Right"
                 ]
             , div []
-                [ viewButton Down "D"
+                [ viewButton Down "Down"
                 ]
             ]
         ]
 
 
-viewBoard : Field -> Html Msg
-viewBoard field =
-    div
-        [ style "display" "inline-flex"
-        , style "flex-direction" "column"
+viewField : Model -> Html Msg
+viewField model =
+    Svg.svg
+        [ Svg.Attributes.width "400"
+        , Svg.Attributes.height "400"
+        , Svg.Attributes.viewBox (interpolate "0 0 {0} {1}" [ String.fromInt (cellCount * cellSize), String.fromInt (cellCount * cellSize) ])
         , style "border" "1px solid black"
         ]
     <|
-        Array.toList (Array.map viewRow field)
+        Array.toList (Array.indexedMap (\y row -> viewRow row y) model.field)
+            ++ [ viewPlayer model.player ]
 
 
-viewRow : Row -> Html Msg
-viewRow row =
-    div [ style "display" "flex" ] <|
-        Array.toList (Array.map viewCell row)
+viewRow : Row -> Int -> Html Msg
+viewRow row y =
+    Svg.g [] <|
+        Array.toList (Array.indexedMap (\x cell -> viewCell cell ( x, y )) row)
 
 
-viewCell : Cell -> Html Msg
-viewCell cell =
+viewCell : Cell -> Position -> Html Msg
+viewCell cell ( x, y ) =
     let
-        boxStyle =
-            [ style "width" "2rem"
-            , style "height" "2rem"
-            , style "border" "1px solid black"
+        gAttr =
+            [ Svg.Attributes.transform (interpolate "translate({0}, {1})" [ String.fromInt (x * cellSize), String.fromInt (y * cellSize) ])
+            ]
+
+        rectAttr =
+            [ Svg.Attributes.width (String.fromInt cellSize)
+            , Svg.Attributes.height (String.fromInt cellSize)
+            , Svg.Attributes.stroke "black"
+            , Svg.Attributes.fill "none"
             ]
     in
     case cell of
         Block okada ->
-            span
-                boxStyle
-                [ text
-                    (if okada == Oka then
-                        "岡"
+            Svg.g
+                gAttr
+                [ Svg.rect
+                    rectAttr
+                    []
+                , Svg.text_
+                    [ Svg.Attributes.x (String.fromFloat (cellSize * 0.5))
+                    , Svg.Attributes.y (String.fromFloat (cellSize * 0.55))
+                    , Svg.Attributes.fontSize (String.fromFloat (cellSize * 0.6))
+                    , Svg.Attributes.dominantBaseline "middle"
+                    , Svg.Attributes.textAnchor "middle"
+                    ]
+                    [ Svg.text
+                        (if okada == Oka then
+                            "岡"
 
-                     else
-                        "田"
-                    )
+                         else
+                            "田"
+                        )
+                    ]
                 ]
 
         Empty ->
-            span boxStyle []
+            Svg.g
+                gAttr
+                [ Svg.rect
+                    rectAttr
+                    []
+                ]
+
+
+viewPlayer : Snake -> Html Msg
+viewPlayer player =
+    Svg.g [] <|
+        List.map viewSnakeCell player
+
+
+viewSnakeCell : SnakeCell -> Html Msg
+viewSnakeCell snakeCell =
+    viewCell (Block snakeCell.okada) snakeCell.position
 
 
 viewButton : Step -> String -> Html Msg
