@@ -7,6 +7,7 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick)
 import Json.Decode as Decode
+import Random
 import String.Interpolate exposing (interpolate)
 import Svg
 import Svg.Attributes
@@ -34,16 +35,20 @@ type alias Model =
 
 
 type alias Field =
-    Array Row
+    List Row
 
 
 type alias Row =
-    Array Cell
+    List Cell
 
 
 type Cell
     = Block Okada
     | Empty
+
+
+type alias CellWithPosition =
+    ( Position, Cell )
 
 
 type Okada
@@ -71,6 +76,54 @@ snakeCells snake =
     List.append [ head ] body
 
 
+allCells : Field -> List CellWithPosition
+allCells field =
+    List.indexedMap
+        (\y row ->
+            List.indexedMap
+                (\x cell ->
+                    ( ( x, y ), cell )
+                )
+                row
+        )
+        field
+        |> List.concat
+
+
+cellsToField : List CellWithPosition -> Field
+cellsToField list =
+    List.map
+        (\axisY ->
+            List.partition (\( ( _, y ), _ ) -> y == axisY) list
+                |> (\( group, _ ) ->
+                        List.sortBy (\( ( x, _ ), _ ) -> x) group
+                   )
+                |> List.map (\( _, c ) -> c)
+        )
+        (List.range 0 (cellCount - 1))
+
+
+filterCells : (CellWithPosition -> Bool) -> Field -> List CellWithPosition
+filterCells valid field =
+    allCells field
+        |> List.filter valid
+
+
+emptyCells : ( Field, Snake ) -> List CellWithPosition
+emptyCells ( field, player ) =
+    filterCells
+        (\( position, cell ) ->
+            cell
+                == Empty
+                && List.member position
+                    (snakeCells player
+                        |> List.map (\sc -> sc.position)
+                    )
+                == False
+        )
+        field
+
+
 type alias Position =
     ( Int, Int )
 
@@ -86,7 +139,7 @@ type Direction
 init : () -> ( Model, Cmd Msg )
 init _ =
     ( { field =
-            Array.repeat 10 <| Array.repeat 10 <| Empty
+            List.repeat 10 <| List.repeat 10 <| Empty
       , player =
             ( { position = ( 0, cellCount - 4 ), okada = Oka, direction = Up }
             , [ { position = ( 0, cellCount - 3 ), okada = Da, direction = Up }
@@ -106,18 +159,64 @@ init _ =
 
 type Msg
     = Change Direction
+    | GenerateBlock Position
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         Change direction ->
+            if direction == Other then
+                ( model, Cmd.none )
+
+            else
+                ( { model
+                    | player = movePlayer direction model.player
+                    , steps = List.append model.steps [ direction ]
+                  }
+                , Random.generate GenerateBlock (Random.pair (Random.int 0 (cellCount - 1)) (Random.int 0 (cellCount - 1)))
+                )
+
+        GenerateBlock pos ->
             ( { model
-                | player = movePlayer direction model.player
-                , steps = List.append model.steps [ direction ]
+                | field =
+                    generateBlock ( model.field, model.player )
+                        pos
+                        (if modBy 2 (List.length model.steps) == 1 then
+                            Oka
+
+                         else
+                            Da
+                        )
               }
             , Cmd.none
             )
+
+
+generateBlock : ( Field, Snake ) -> Position -> Okada -> Field
+generateBlock ( field, player ) p okada =
+    let
+        empties =
+            emptyCells ( field, player )
+
+        emptyPositions =
+            List.map (\( pos, _ ) -> pos) empties
+
+        notEmpty =
+            filterCells (\( pos, cell ) -> List.member pos emptyPositions == False) field
+    in
+    List.append notEmpty
+        (empties
+            |> List.map
+                (\( position, cell ) ->
+                    if position == p then
+                        ( position, Block okada )
+
+                    else
+                        ( position, cell )
+                )
+        )
+        |> cellsToField
 
 
 movePlayer : Direction -> Snake -> Snake
@@ -244,14 +343,14 @@ viewField model =
         , style "border" "1px solid black"
         ]
     <|
-        Array.toList (Array.indexedMap (\y row -> viewRow row y) model.field)
+        List.indexedMap (\y row -> viewRow row y) model.field
             ++ [ viewPlayer model.player ]
 
 
 viewRow : Row -> Int -> Html Msg
 viewRow row y =
     Svg.g [] <|
-        Array.toList (Array.indexedMap (\x cell -> viewCell cell ( x, y )) row)
+        List.indexedMap (\x cell -> viewCell cell ( x, y )) row
 
 
 viewCell : Cell -> Position -> Html Msg
@@ -342,7 +441,7 @@ viewSnakeLine parent child =
             child.position
 
         ( dx, dy ) =
-            ( cellSizeFloat * 0.30, cellSizeFloat * 0.33 )
+            ( cellSizeFloat * 0.3, cellSizeFloat * 0.33 )
 
         ( cx, cy ) =
             ( (toFloat (parentX + childX) / 2 + 0.5) * cellSizeFloat, (toFloat (parentY + childY) / 2 + 0.5) * cellSizeFloat )
