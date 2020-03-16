@@ -7,8 +7,11 @@ module Model exposing
     , Row
     , Snake
     , SnakeCell
+    , allCells
     , cellCount
+    , enablePositions
     , generateBlock
+    , isGameOver
     , movePlayer
     , snakeCells
     )
@@ -153,7 +156,7 @@ generateBlock ( field, player ) p okada =
             List.map (\( pos, _ ) -> pos) empties
 
         notEmpty =
-            filterCells (\( pos, cell ) -> List.member pos emptyPositions == False) field
+            filterCells (\( pos, _ ) -> List.member pos emptyPositions == False) field
     in
     List.append notEmpty
         (empties
@@ -173,21 +176,7 @@ movePlayer : Direction -> ( Field, Snake ) -> ( Field, Snake )
 movePlayer direction ( field, player ) =
     let
         ( dx, dy ) =
-            case direction of
-                Left ->
-                    ( -1, 0 )
-
-                Right ->
-                    ( 1, 0 )
-
-                Up ->
-                    ( 0, -1 )
-
-                Down ->
-                    ( 0, 1 )
-
-                Other ->
-                    ( 0, 0 )
+            directionToDiff direction
 
         ( head, body ) =
             player
@@ -278,3 +267,97 @@ movePlayer direction ( field, player ) =
                 )
             |> Maybe.withDefault
                 ( field, player )
+
+
+enablePositions : ( Field, Snake ) -> List Position
+enablePositions ( field, player ) =
+    enableDirections ( field, player )
+        |> List.map directionToDiff
+        |> (let
+                ( head, _ ) =
+                    player
+
+                ( x, y ) =
+                    head.position
+            in
+            List.map (\( dx, dy ) -> ( x + dx, y + dy ))
+           )
+
+
+isGameOver : Model -> Bool
+isGameOver model =
+    List.length
+        (enablePositions
+            ( model.field, model.player )
+        )
+        == 0
+
+
+
+-- private
+
+
+directionToDiff : Direction -> Position
+directionToDiff direction =
+    case direction of
+        Left ->
+            ( -1, 0 )
+
+        Right ->
+            ( 1, 0 )
+
+        Up ->
+            ( 0, -1 )
+
+        Down ->
+            ( 0, 1 )
+
+        Other ->
+            ( 0, 0 )
+
+
+enableDirections : ( Field, Snake ) -> List Direction
+enableDirections ( field, player ) =
+    let
+        ( head, body ) =
+            player
+
+        ( x, y ) =
+            head.position
+    in
+    [ ( Up, ( x, y - 1 ) )
+    , ( Down, ( x, y + 1 ) )
+    , ( Left, ( x - 1, y ) )
+    , ( Right, ( x + 1, y ) )
+    ]
+        |> List.filter
+            (\( _, dp ) ->
+                allCells field
+                    |> List.any
+                        (\( p, c ) ->
+                            p == dp && canMoveCell player ( p, c )
+                        )
+            )
+        |> List.map (\( d, _ ) -> d)
+
+
+canMoveCell : Snake -> ( Position, Cell ) -> Bool
+canMoveCell player ( p, cell ) =
+    let
+        ( _, body ) =
+            player
+    in
+    List.member p (List.map (\c -> c.position) body) == False && ((cell == Empty) || canEatCell player cell)
+
+
+canEatCell : Snake -> Cell -> Bool
+canEatCell player cell =
+    let
+        ( _, body ) =
+            player
+    in
+    if modBy 2 (List.length body) == 1 then
+        cell == Block Oka
+
+    else
+        cell == Block Da

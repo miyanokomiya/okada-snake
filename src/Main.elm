@@ -58,14 +58,27 @@ update msg model =
                 let
                     ( field, player ) =
                         Model.movePlayer direction ( model.field, model.player )
+
+                    ( beforeHead, _ ) =
+                        model.player
+
+                    ( head, _ ) =
+                        player
+
+                    isMoved =
+                        beforeHead.position /= head.position
                 in
-                ( { model
-                    | player = player
-                    , field = field
-                    , steps = List.append model.steps [ direction ]
-                  }
-                , Random.generate GenerateBlock (Random.pair (Random.int 0 (Model.cellCount - 1)) (Random.int 0 (Model.cellCount - 1)))
-                )
+                if isMoved then
+                    ( { model
+                        | player = player
+                        , field = field
+                        , steps = List.append model.steps [ direction ]
+                      }
+                    , Random.generate GenerateBlock (Random.pair (Random.int 0 (Model.cellCount - 1)) (Random.int 0 (Model.cellCount - 1)))
+                    )
+
+                else
+                    ( model, Cmd.none )
 
         GenerateBlock pos ->
             let
@@ -107,15 +120,26 @@ cellSizeFloat =
 
 view : Model.Model -> Html Msg
 view model =
+    let
+        isGameOver =
+            Model.isGameOver model
+    in
     div
         [ style "padding" "1rem"
         , style "display" "flex"
         , style "flex-direction" "column"
         , style "align-items" "center"
         ]
-        [ div []
-            [ viewField model
-            ]
+        [ div [ style "position" "relative" ]
+            (List.append
+                [ viewField model ]
+                (if isGameOver then
+                    [ viewGameOver ]
+
+                 else
+                    []
+                )
+            )
         , div
             [ style "margin" "0.5rem"
             , style "display" "flex"
@@ -125,7 +149,7 @@ view model =
             [ div
                 [ style "margin" "0 2rem"
                 ]
-                [ viewScore model.player
+                [ viewScore model
                 ]
             , div
                 [ style "margin" "0 2rem"
@@ -150,6 +174,10 @@ view model =
 
 viewField : Model.Model -> Html Msg
 viewField model =
+    let
+        enablePositions =
+            Model.enablePositions ( model.field, model.player )
+    in
     Svg.svg
         [ Svg.Attributes.width "400"
         , Svg.Attributes.height "400"
@@ -157,18 +185,14 @@ viewField model =
         , style "border" "1px solid black"
         ]
     <|
-        List.indexedMap (\y row -> viewRow row y) model.field
+        (Model.allCells model.field
+            |> List.map (\( p, c ) -> viewCell c p (List.member p enablePositions))
+        )
             ++ [ viewPlayer model.player ]
 
 
-viewRow : Model.Row -> Int -> Html Msg
-viewRow row y =
-    Svg.g [] <|
-        List.indexedMap (\x cell -> viewCell cell ( x, y )) row
-
-
-viewCell : Model.Cell -> Model.Position -> Html Msg
-viewCell cell ( x, y ) =
+viewCell : Model.Cell -> Model.Position -> Bool -> Html Msg
+viewCell cell ( x, y ) enable =
     let
         gAttr =
             [ Svg.Attributes.transform (interpolate "translate({0}, {1})" [ String.fromInt (x * cellSize), String.fromInt (y * cellSize) ])
@@ -178,7 +202,13 @@ viewCell cell ( x, y ) =
             [ Svg.Attributes.width (String.fromInt cellSize)
             , Svg.Attributes.height (String.fromInt cellSize)
             , Svg.Attributes.stroke "black"
-            , Svg.Attributes.fill "none"
+            , Svg.Attributes.fill
+                (if enable then
+                    "lime"
+
+                 else
+                    "none"
+                )
             ]
     in
     case cell of
@@ -398,11 +428,17 @@ viewButton step label =
     button (List.append buttonStyle [ onClick (Change step) ]) [ text label ]
 
 
-viewScore : Model.Snake -> Html Msg
-viewScore player =
+viewScore : Model.Model -> Html Msg
+viewScore model =
     let
+        player =
+            model.player
+
         score =
             List.length (Model.snakeCells player) - 1
+
+        gameover =
+            Model.isGameOver model
     in
     div
         [ style "padding" "0.2rem 1rem"
@@ -412,6 +448,21 @@ viewScore player =
         , style "background-color" "#333"
         ]
         [ text (String.fromInt score) ]
+
+
+viewGameOver : Html Msg
+viewGameOver =
+    div
+        [ style "position" "absolute"
+        , style "top" "50%"
+        , style "left" "50%"
+        , style "transform" "translate(-50%, -50%)"
+        , style "font-size" "3rem"
+        , style "font-weight" "600"
+        , style "color" "red"
+        , style "white-space" "nowrap"
+        ]
+        [ text "Game Over" ]
 
 
 
