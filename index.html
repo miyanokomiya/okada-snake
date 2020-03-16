@@ -5339,7 +5339,7 @@ var $elm$browser$Browser$element = _Browser_element;
 var $author$project$Model$Empty = {$: 1};
 var $author$project$Model$Oka = 0;
 var $author$project$Model$Up = 2;
-var $author$project$Model$cellCount = 10;
+var $author$project$Model$cellCount = 16;
 var $elm$core$Platform$Cmd$batch = _Platform_batch;
 var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
 var $elm$core$List$repeatHelp = F3(
@@ -5368,8 +5368,8 @@ var $author$project$Main$init = function (_v0) {
 		{
 			s: A2(
 				$elm$core$List$repeat,
-				10,
-				A2($elm$core$List$repeat, 10, $author$project$Model$Empty)),
+				$author$project$Model$cellCount,
+				A2($elm$core$List$repeat, $author$project$Model$cellCount, $author$project$Model$Empty)),
 			p: _Utils_Tuple2(
 				{
 					V: 2,
@@ -5928,9 +5928,10 @@ var $elm$random$Random$generate = F2(
 		return $elm$random$Random$command(
 			A2($elm$random$Random$map, tagger, generator));
 	});
-var $author$project$Model$Block = function (a) {
-	return {$: 0, a: a};
-};
+var $author$project$Model$Block = F2(
+	function (a, b) {
+		return {$: 0, a: a, b: b};
+	});
 var $elm$core$List$partition = F2(
 	function (pred, list) {
 		var step = F2(
@@ -6081,38 +6082,74 @@ var $author$project$Model$emptyCells = function (_v0) {
 		},
 		field);
 };
+var $author$project$Model$stepBlock = function (cell) {
+	if (!cell.$) {
+		if (!cell.a) {
+			var _v1 = cell.a;
+			var count = cell.b;
+			return A2(
+				$author$project$Model$Block,
+				0,
+				A2($elm$core$Basics$max, 0, count - 1));
+		} else {
+			var _v2 = cell.a;
+			var count = cell.b;
+			return A2(
+				$author$project$Model$Block,
+				1,
+				A2($elm$core$Basics$max, 0, count - 1));
+		}
+	} else {
+		return $author$project$Model$Empty;
+	}
+};
 var $author$project$Model$generateBlock = F3(
 	function (_v0, p, okada) {
 		var field = _v0.a;
 		var player = _v0.b;
+		var playerPositions = A2(
+			$elm$core$List$map,
+			function (s) {
+				return s.B;
+			},
+			$author$project$Model$snakeCells(player));
 		var empties = $author$project$Model$emptyCells(
 			_Utils_Tuple2(field, player));
 		var emptyPositions = A2(
 			$elm$core$List$map,
-			function (_v3) {
-				var pos = _v3.a;
+			function (_v4) {
+				var pos = _v4.a;
 				return pos;
 			},
 			empties);
 		var notEmpty = A2(
 			$author$project$Model$filterCells,
-			function (_v2) {
-				var pos = _v2.a;
+			function (_v3) {
+				var pos = _v3.a;
 				return !A2($elm$core$List$member, pos, emptyPositions);
 			},
 			field);
 		return $author$project$Model$cellsToField(
 			A2(
 				$elm$core$List$append,
-				notEmpty,
 				A2(
 					$elm$core$List$map,
 					function (_v1) {
-						var position = _v1.a;
+						var pos = _v1.a;
 						var cell = _v1.b;
+						return A2($elm$core$List$member, pos, playerPositions) ? _Utils_Tuple2(pos, cell) : _Utils_Tuple2(
+							pos,
+							$author$project$Model$stepBlock(cell));
+					},
+					notEmpty),
+				A2(
+					$elm$core$List$map,
+					function (_v2) {
+						var position = _v2.a;
+						var cell = _v2.b;
 						return _Utils_eq(position, p) ? _Utils_Tuple2(
 							position,
-							$author$project$Model$Block(okada)) : _Utils_Tuple2(position, cell);
+							A2($author$project$Model$Block, okada, 2)) : _Utils_Tuple2(position, cell);
 					},
 					empties)));
 	});
@@ -6158,6 +6195,42 @@ var $elm$random$Random$int = F2(
 		};
 	});
 var $elm$core$Basics$modBy = _Basics_modBy;
+var $author$project$Model$canEatCell = F2(
+	function (player, cell) {
+		var _v0 = player;
+		var body = _v0.b;
+		return (A2(
+			$elm$core$Basics$modBy,
+			2,
+			$elm$core$List$length(body)) === 1) ? _Utils_eq(
+			cell,
+			A2($author$project$Model$Block, 0, 0)) : _Utils_eq(
+			cell,
+			A2($author$project$Model$Block, 1, 0));
+	});
+var $author$project$Model$isCompleteBlock = function (cell) {
+	return _Utils_eq(
+		cell,
+		A2($author$project$Model$Block, 0, 0)) || _Utils_eq(
+		cell,
+		A2($author$project$Model$Block, 1, 0));
+};
+var $author$project$Model$canMoveCell = F2(
+	function (player, _v0) {
+		var p = _v0.a;
+		var cell = _v0.b;
+		var _v1 = player;
+		var body = _v1.b;
+		return (!A2(
+			$elm$core$List$member,
+			p,
+			A2(
+				$elm$core$List$map,
+				function (c) {
+					return c.B;
+				},
+				body))) && ((!$author$project$Model$isCompleteBlock(cell)) || A2($author$project$Model$canEatCell, player, cell));
+	});
 var $author$project$Model$directionToDiff = function (direction) {
 	switch (direction) {
 		case 0:
@@ -6325,19 +6398,14 @@ var $author$project$Model$movePlayer = F2(
 			A2(
 				$elm$core$Maybe$map,
 				function (_v4) {
+					var fieldCellPos = _v4.a;
 					var fieldCell = _v4.b;
-					var eat = (_Utils_eq(
-						fieldCell,
-						$author$project$Model$Block(0)) && (A2(
-						$elm$core$Basics$modBy,
-						2,
-						$elm$core$List$length(body)) === 1)) || (_Utils_eq(
-						fieldCell,
-						$author$project$Model$Block(1)) && (!A2(
-						$elm$core$Basics$modBy,
-						2,
-						$elm$core$List$length(body))));
-					return (_Utils_eq(fieldCell, $author$project$Model$Empty) || eat) ? _Utils_Tuple2(
+					var canMove = A2(
+						$author$project$Model$canMoveCell,
+						player,
+						_Utils_Tuple2(fieldCellPos, fieldCell));
+					var canEat = A2($author$project$Model$canEatCell, player, fieldCell);
+					return (canMove || canEat) ? _Utils_Tuple2(
 						$author$project$Model$cellsToField(
 							A2(
 								$elm$core$List$map,
@@ -6346,7 +6414,9 @@ var $author$project$Model$movePlayer = F2(
 									var c = _v5.b;
 									return _Utils_eq(
 										p,
-										_Utils_Tuple2(nextTopX, nextTopY)) ? _Utils_Tuple2(p, $author$project$Model$Empty) : _Utils_Tuple2(p, c);
+										_Utils_Tuple2(nextTopX, nextTopY)) ? _Utils_Tuple2(
+										p,
+										canEat ? $author$project$Model$Empty : fieldCell) : _Utils_Tuple2(p, c);
 								},
 								$author$project$Model$allCells(field))),
 						_Utils_Tuple2(
@@ -6379,7 +6449,7 @@ var $author$project$Model$movePlayer = F2(
 													mayBeBefore));
 										}),
 									body),
-								eat ? A2(
+								canEat ? A2(
 									$elm$core$Maybe$withDefault,
 									_List_Nil,
 									A2(
@@ -6391,7 +6461,7 @@ var $author$project$Model$movePlayer = F2(
 													V: tail.V,
 													ad: _Utils_eq(
 														fieldCell,
-														$author$project$Model$Block(0)) ? 0 : 1,
+														A2($author$project$Model$Block, 0, 0)) ? 0 : 1,
 													B: tail.B
 												}
 												]);
@@ -6487,41 +6557,11 @@ var $author$project$Main$update = F2(
 		}
 	});
 var $elm$html$Html$div = _VirtualDom_node('div');
-var $author$project$Model$canEatCell = F2(
-	function (player, cell) {
-		var _v0 = player;
-		var body = _v0.b;
-		return (A2(
-			$elm$core$Basics$modBy,
-			2,
-			$elm$core$List$length(body)) === 1) ? _Utils_eq(
-			cell,
-			$author$project$Model$Block(0)) : _Utils_eq(
-			cell,
-			$author$project$Model$Block(1));
-	});
-var $author$project$Model$canMoveCell = F2(
-	function (player, _v0) {
-		var p = _v0.a;
-		var cell = _v0.b;
-		var _v1 = player;
-		var body = _v1.b;
-		return (!A2(
-			$elm$core$List$member,
-			p,
-			A2(
-				$elm$core$List$map,
-				function (c) {
-					return c.B;
-				},
-				body))) && (_Utils_eq(cell, $author$project$Model$Empty) || A2($author$project$Model$canEatCell, player, cell));
-	});
 var $author$project$Model$enableDirections = function (_v0) {
 	var field = _v0.a;
 	var player = _v0.b;
 	var _v1 = player;
 	var head = _v1.a;
-	var body = _v1.b;
 	var _v2 = head.B;
 	var x = _v2.a;
 	var y = _v2.b;
@@ -6745,6 +6785,7 @@ var $author$project$Main$viewCell = F3(
 			]);
 		if (!cell.$) {
 			var okada = cell.a;
+			var count = cell.b;
 			return A2(
 				$elm$svg$Svg$g,
 				gAttr,
@@ -6760,9 +6801,20 @@ var $author$project$Main$viewCell = F3(
 								$elm$svg$Svg$Attributes$y(
 								$elm$core$String$fromFloat($author$project$Main$cellSizeFloat * 0.55)),
 								$elm$svg$Svg$Attributes$fontSize(
-								$elm$core$String$fromFloat($author$project$Main$cellSizeFloat * 0.6)),
+								$elm$core$String$fromFloat(($author$project$Main$cellSizeFloat * 0.6) / (1 + count))),
 								$elm$svg$Svg$Attributes$dominantBaseline('middle'),
-								$elm$svg$Svg$Attributes$textAnchor('middle')
+								$elm$svg$Svg$Attributes$textAnchor('middle'),
+								$elm$svg$Svg$Attributes$fill(
+								function () {
+									switch (count) {
+										case 1:
+											return 'blue';
+										case 2:
+											return 'red';
+										default:
+											return 'black';
+									}
+								}())
 							]),
 						_List_fromArray(
 							[
