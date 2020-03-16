@@ -141,11 +141,8 @@ init _ =
     ( { field =
             List.repeat 10 <| List.repeat 10 <| Empty
       , player =
-            ( { position = ( 0, cellCount - 4 ), okada = Oka, direction = Up }
-            , [ { position = ( 0, cellCount - 3 ), okada = Da, direction = Up }
-              , { position = ( 0, cellCount - 2 ), okada = Oka, direction = Up }
-              , { position = ( 0, cellCount - 1 ), okada = Da, direction = Up }
-              ]
+            ( { position = ( 0, cellCount - 1 ), okada = Oka, direction = Up }
+            , []
             )
       , steps = []
       }
@@ -170,27 +167,40 @@ update msg model =
                 ( model, Cmd.none )
 
             else
+                let
+                    ( field, player ) =
+                        movePlayer direction ( model.field, model.player )
+                in
                 ( { model
-                    | player = movePlayer direction model.player
+                    | player = player
+                    , field = field
                     , steps = List.append model.steps [ direction ]
                   }
                 , Random.generate GenerateBlock (Random.pair (Random.int 0 (cellCount - 1)) (Random.int 0 (cellCount - 1)))
                 )
 
         GenerateBlock pos ->
-            ( { model
-                | field =
-                    generateBlock ( model.field, model.player )
-                        pos
-                        (if modBy 2 (List.length model.steps) == 1 then
-                            Oka
+            let
+                count =
+                    List.length model.steps
+            in
+            if modBy 2 count == 1 then
+                ( model, Cmd.none )
 
-                         else
-                            Da
-                        )
-              }
-            , Cmd.none
-            )
+            else
+                ( { model
+                    | field =
+                        generateBlock ( model.field, model.player )
+                            pos
+                            (if modBy 4 (List.length model.steps) == 2 then
+                                Oka
+
+                             else
+                                Da
+                            )
+                  }
+                , Cmd.none
+                )
 
 
 generateBlock : ( Field, Snake ) -> Position -> Okada -> Field
@@ -219,8 +229,8 @@ generateBlock ( field, player ) p okada =
         |> cellsToField
 
 
-movePlayer : Direction -> Snake -> Snake
-movePlayer direction player =
+movePlayer : Direction -> ( Field, Snake ) -> ( Field, Snake )
+movePlayer direction ( field, player ) =
     let
         ( dx, dy ) =
             case direction of
@@ -253,30 +263,81 @@ movePlayer direction player =
 
         nextTopY =
             Basics.min (cellCount - 1) (Basics.max 0 (headY + dy))
+
+        fieldCellMaybe =
+            List.head (filterCells (\( p, _ ) -> p == ( nextTopX, nextTopY )) field)
     in
     if List.member ( nextTopX, nextTopY ) (List.map (\snakeCell -> snakeCell.position) cellList) then
-        player
+        ( field, player )
 
     else
-        ( { head | position = ( nextTopX, nextTopY ), direction = direction }
-        , List.indexedMap
-            (\i snakeCell ->
-                let
-                    mayBeBefore =
-                        Array.get i (Array.fromList cellList)
-                in
-                mayBeBefore
-                    |> Maybe.map
-                        (\before ->
-                            { snakeCell
-                                | position = before.position
-                                , direction = before.direction
-                            }
+        fieldCellMaybe
+            |> Maybe.map
+                (\( _, fieldCell ) ->
+                    let
+                        eat =
+                            (fieldCell == Block Oka && modBy 2 (List.length body) == 1)
+                                || (fieldCell == Block Da && modBy 2 (List.length body) == 0)
+                    in
+                    if fieldCell == Empty || eat then
+                        ( List.map
+                            (\( p, c ) ->
+                                if p == ( nextTopX, nextTopY ) then
+                                    ( p, Empty )
+
+                                else
+                                    ( p, c )
+                            )
+                            (allCells field)
+                            |> cellsToField
+                        , ( { head | position = ( nextTopX, nextTopY ), direction = direction }
+                          , List.append
+                                (List.indexedMap
+                                    (\i snakeCell ->
+                                        let
+                                            mayBeBefore =
+                                                Array.get i (Array.fromList cellList)
+                                        in
+                                        mayBeBefore
+                                            |> Maybe.map
+                                                (\before ->
+                                                    { snakeCell
+                                                        | position = before.position
+                                                        , direction = before.direction
+                                                    }
+                                                )
+                                            |> Maybe.withDefault snakeCell
+                                    )
+                                    body
+                                )
+                                (if eat then
+                                    List.head (List.reverse cellList)
+                                        |> Maybe.map
+                                            (\tail ->
+                                                [ { position = tail.position
+                                                  , okada =
+                                                        if fieldCell == Block Oka then
+                                                            Oka
+
+                                                        else
+                                                            Da
+                                                  , direction = tail.direction
+                                                  }
+                                                ]
+                                            )
+                                        |> Maybe.withDefault []
+
+                                 else
+                                    []
+                                )
+                          )
                         )
-                    |> Maybe.withDefault snakeCell
-            )
-            body
-        )
+
+                    else
+                        ( field, player )
+                )
+            |> Maybe.withDefault
+                ( field, player )
 
 
 
@@ -317,18 +378,30 @@ view model =
         , div
             [ style "margin" "0.5rem"
             , style "display" "flex"
-            , style "flex-direction" "column"
-            , style "align-items" "center"
+            , style "align-items" "flex-start"
+            , style "justify-content" "space-between"
             ]
-            [ div []
-                [ viewButton Up "Up"
+            [ div
+                [ style "margin" "0 2rem"
                 ]
-            , div []
-                [ viewButton Left "Left"
-                , viewButton Right "Right"
+                [ viewScore model.player
                 ]
-            , div []
-                [ viewButton Down "Down"
+            , div
+                [ style "margin" "0 2rem"
+                , style "display" "flex"
+                , style "flex-direction" "column"
+                , style "align-items" "center"
+                ]
+                [ div []
+                    [ viewButton Up "Up"
+                    ]
+                , div []
+                    [ viewButton Left "Left"
+                    , viewButton Right "Right"
+                    ]
+                , div []
+                    [ viewButton Down "Down"
+                    ]
                 ]
             ]
         ]
@@ -582,6 +655,22 @@ viewButton step label =
             ]
     in
     button (List.append buttonStyle [ onClick (Change step) ]) [ text label ]
+
+
+viewScore : Snake -> Html Msg
+viewScore player =
+    let
+        score =
+            List.length (snakeCells player) - 1
+    in
+    div
+        [ style "padding" "0.2rem 1rem"
+        , style "width" "5rem"
+        , style "text-align" "right"
+        , style "color" "#fff"
+        , style "background-color" "#333"
+        ]
+        [ text (String.fromInt score) ]
 
 
 
