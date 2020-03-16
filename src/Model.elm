@@ -25,7 +25,7 @@ import Array
 
 cellCount : Int
 cellCount =
-    10
+    16
 
 
 cellCountFloat : Float
@@ -49,7 +49,7 @@ type alias Row =
 
 
 type Cell
-    = Block Okada
+    = Block Okada Int
     | Empty
 
 
@@ -157,13 +157,26 @@ generateBlock ( field, player ) p okada =
 
         notEmpty =
             filterCells (\( pos, _ ) -> List.member pos emptyPositions == False) field
+
+        playerPositions =
+            List.map (\s -> s.position) (snakeCells player)
     in
-    List.append notEmpty
+    List.append
+        (List.map
+            (\( pos, cell ) ->
+                if List.member pos playerPositions then
+                    ( pos, cell )
+
+                else
+                    ( pos, stepBlock cell )
+            )
+            notEmpty
+        )
         (empties
             |> List.map
                 (\( position, cell ) ->
                     if position == p then
-                        ( position, Block okada )
+                        ( position, Block okada 2 )
 
                     else
                         ( position, cell )
@@ -202,17 +215,25 @@ movePlayer direction ( field, player ) =
     else
         fieldCellMaybe
             |> Maybe.map
-                (\( _, fieldCell ) ->
+                (\( fieldCellPos, fieldCell ) ->
                     let
-                        eat =
-                            (fieldCell == Block Oka && modBy 2 (List.length body) == 1)
-                                || (fieldCell == Block Da && modBy 2 (List.length body) == 0)
+                        canEat =
+                            canEatCell player fieldCell
+
+                        canMove =
+                            canMoveCell player ( fieldCellPos, fieldCell )
                     in
-                    if fieldCell == Empty || eat then
+                    if canMove || canEat then
                         ( List.map
                             (\( p, c ) ->
                                 if p == ( nextTopX, nextTopY ) then
-                                    ( p, Empty )
+                                    ( p
+                                    , if canEat then
+                                        Empty
+
+                                      else
+                                        fieldCell
+                                    )
 
                                 else
                                     ( p, c )
@@ -239,13 +260,13 @@ movePlayer direction ( field, player ) =
                                     )
                                     body
                                 )
-                                (if eat then
+                                (if canEat then
                                     List.head (List.reverse cellList)
                                         |> Maybe.map
                                             (\tail ->
                                                 [ { position = tail.position
                                                   , okada =
-                                                        if fieldCell == Block Oka then
+                                                        if fieldCell == Block Oka 0 then
                                                             Oka
 
                                                         else
@@ -319,7 +340,7 @@ directionToDiff direction =
 enableDirections : ( Field, Snake ) -> List Direction
 enableDirections ( field, player ) =
     let
-        ( head, body ) =
+        ( head, _ ) =
             player
 
         ( x, y ) =
@@ -347,7 +368,12 @@ canMoveCell player ( p, cell ) =
         ( _, body ) =
             player
     in
-    List.member p (List.map (\c -> c.position) body) == False && ((cell == Empty) || canEatCell player cell)
+    List.member p (List.map (\c -> c.position) body) == False && (isCompleteBlock cell == False || canEatCell player cell)
+
+
+isCompleteBlock : Cell -> Bool
+isCompleteBlock cell =
+    cell == Block Oka 0 || cell == Block Da 0
 
 
 canEatCell : Snake -> Cell -> Bool
@@ -357,7 +383,20 @@ canEatCell player cell =
             player
     in
     if modBy 2 (List.length body) == 1 then
-        cell == Block Oka
+        cell == Block Oka 0
 
     else
-        cell == Block Da
+        cell == Block Da 0
+
+
+stepBlock : Cell -> Cell
+stepBlock cell =
+    case cell of
+        Block Oka count ->
+            Block Oka (max 0 (count - 1))
+
+        Block Da count ->
+            Block Da (max 0 (count - 1))
+
+        Empty ->
+            Empty

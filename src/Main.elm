@@ -31,7 +31,7 @@ main =
 init : () -> ( Model.Model, Cmd Msg )
 init _ =
     ( { field =
-            List.repeat 10 <| List.repeat 10 <| Model.Empty
+            List.repeat Model.cellCount <| List.repeat Model.cellCount <| Model.Empty
       , player =
             ( { position = ( 0, Model.cellCount - 1 ), okada = Model.Oka, direction = Model.Up }
             , []
@@ -212,7 +212,7 @@ viewCell cell ( x, y ) enable =
             ]
     in
     case cell of
-        Model.Block okada ->
+        Model.Block okada count ->
             Svg.g
                 gAttr
                 [ Svg.rect
@@ -221,9 +221,17 @@ viewCell cell ( x, y ) enable =
                 , Svg.text_
                     [ Svg.Attributes.x (String.fromFloat (cellSizeFloat * 0.5))
                     , Svg.Attributes.y (String.fromFloat (cellSizeFloat * 0.55))
-                    , Svg.Attributes.fontSize (String.fromFloat (cellSizeFloat * 0.6))
+                    , Svg.Attributes.fontSize (String.fromFloat (cellSizeFloat * 0.6 / toFloat (1 + count)))
                     , Svg.Attributes.dominantBaseline "middle"
                     , Svg.Attributes.textAnchor "middle"
+                    , Svg.Attributes.fill
+                        (case count of
+                            1 ->
+                                "blue"
+                            2 ->
+                                "red"
+                            _ -> "black"
+                        )
                     ]
                     [ Svg.text
                         (if okada == Model.Oka then
