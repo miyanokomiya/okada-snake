@@ -1,19 +1,20 @@
 module Main exposing (main)
 
-import Array exposing (Array)
+import Array
 import Browser
 import Browser.Events exposing (onKeyDown)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick)
 import Json.Decode as Decode
+import Model
 import Random
 import String.Interpolate exposing (interpolate)
 import Svg
 import Svg.Attributes
 
 
-main : Program () Model Msg
+main : Program () Model.Model Msg
 main =
     Browser.element
         { init = init
@@ -24,124 +25,15 @@ main =
 
 
 
--- MODEL
+-- UPDATE
 
 
-type alias Model =
-    { field : Field
-    , steps : List Direction
-    , player : Snake
-    }
-
-
-type alias Field =
-    List Row
-
-
-type alias Row =
-    List Cell
-
-
-type Cell
-    = Block Okada
-    | Empty
-
-
-type alias CellWithPosition =
-    ( Position, Cell )
-
-
-type Okada
-    = Oka
-    | Da
-
-
-type alias SnakeCell =
-    { position : Position
-    , okada : Okada
-    , direction : Direction
-    }
-
-
-type alias Snake =
-    ( SnakeCell, List SnakeCell )
-
-
-snakeCells : Snake -> List SnakeCell
-snakeCells snake =
-    let
-        ( head, body ) =
-            snake
-    in
-    List.append [ head ] body
-
-
-allCells : Field -> List CellWithPosition
-allCells field =
-    List.indexedMap
-        (\y row ->
-            List.indexedMap
-                (\x cell ->
-                    ( ( x, y ), cell )
-                )
-                row
-        )
-        field
-        |> List.concat
-
-
-cellsToField : List CellWithPosition -> Field
-cellsToField list =
-    List.map
-        (\axisY ->
-            List.partition (\( ( _, y ), _ ) -> y == axisY) list
-                |> (\( group, _ ) ->
-                        List.sortBy (\( ( x, _ ), _ ) -> x) group
-                   )
-                |> List.map (\( _, c ) -> c)
-        )
-        (List.range 0 (cellCount - 1))
-
-
-filterCells : (CellWithPosition -> Bool) -> Field -> List CellWithPosition
-filterCells valid field =
-    allCells field
-        |> List.filter valid
-
-
-emptyCells : ( Field, Snake ) -> List CellWithPosition
-emptyCells ( field, player ) =
-    filterCells
-        (\( position, cell ) ->
-            cell
-                == Empty
-                && List.member position
-                    (snakeCells player
-                        |> List.map (\sc -> sc.position)
-                    )
-                == False
-        )
-        field
-
-
-type alias Position =
-    ( Int, Int )
-
-
-type Direction
-    = Left
-    | Right
-    | Up
-    | Down
-    | Other
-
-
-init : () -> ( Model, Cmd Msg )
+init : () -> ( Model.Model, Cmd Msg )
 init _ =
     ( { field =
-            List.repeat 10 <| List.repeat 10 <| Empty
+            List.repeat 10 <| List.repeat 10 <| Model.Empty
       , player =
-            ( { position = ( 0, cellCount - 1 ), okada = Oka, direction = Up }
+            ( { position = ( 0, Model.cellCount - 1 ), okada = Model.Oka, direction = Model.Up }
             , []
             )
       , steps = []
@@ -150,33 +42,29 @@ init _ =
     )
 
 
-
--- UPDATE
-
-
 type Msg
-    = Change Direction
-    | GenerateBlock Position
+    = Change Model.Direction
+    | GenerateBlock Model.Position
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
+update : Msg -> Model.Model -> ( Model.Model, Cmd Msg )
 update msg model =
     case msg of
         Change direction ->
-            if direction == Other then
+            if direction == Model.Other then
                 ( model, Cmd.none )
 
             else
                 let
                     ( field, player ) =
-                        movePlayer direction ( model.field, model.player )
+                        Model.movePlayer direction ( model.field, model.player )
                 in
                 ( { model
                     | player = player
                     , field = field
                     , steps = List.append model.steps [ direction ]
                   }
-                , Random.generate GenerateBlock (Random.pair (Random.int 0 (cellCount - 1)) (Random.int 0 (cellCount - 1)))
+                , Random.generate GenerateBlock (Random.pair (Random.int 0 (Model.cellCount - 1)) (Random.int 0 (Model.cellCount - 1)))
                 )
 
         GenerateBlock pos ->
@@ -190,168 +78,21 @@ update msg model =
             else
                 ( { model
                     | field =
-                        generateBlock ( model.field, model.player )
+                        Model.generateBlock ( model.field, model.player )
                             pos
                             (if modBy 4 (List.length model.steps) == 2 then
-                                Oka
+                                Model.Oka
 
                              else
-                                Da
+                                Model.Da
                             )
                   }
                 , Cmd.none
                 )
 
 
-generateBlock : ( Field, Snake ) -> Position -> Okada -> Field
-generateBlock ( field, player ) p okada =
-    let
-        empties =
-            emptyCells ( field, player )
-
-        emptyPositions =
-            List.map (\( pos, _ ) -> pos) empties
-
-        notEmpty =
-            filterCells (\( pos, cell ) -> List.member pos emptyPositions == False) field
-    in
-    List.append notEmpty
-        (empties
-            |> List.map
-                (\( position, cell ) ->
-                    if position == p then
-                        ( position, Block okada )
-
-                    else
-                        ( position, cell )
-                )
-        )
-        |> cellsToField
-
-
-movePlayer : Direction -> ( Field, Snake ) -> ( Field, Snake )
-movePlayer direction ( field, player ) =
-    let
-        ( dx, dy ) =
-            case direction of
-                Left ->
-                    ( -1, 0 )
-
-                Right ->
-                    ( 1, 0 )
-
-                Up ->
-                    ( 0, -1 )
-
-                Down ->
-                    ( 0, 1 )
-
-                Other ->
-                    ( 0, 0 )
-
-        ( head, body ) =
-            player
-
-        cellList =
-            snakeCells player
-
-        ( headX, headY ) =
-            head.position
-
-        nextTopX =
-            Basics.min (cellCount - 1) (Basics.max 0 (headX + dx))
-
-        nextTopY =
-            Basics.min (cellCount - 1) (Basics.max 0 (headY + dy))
-
-        fieldCellMaybe =
-            List.head (filterCells (\( p, _ ) -> p == ( nextTopX, nextTopY )) field)
-    in
-    if List.member ( nextTopX, nextTopY ) (List.map (\snakeCell -> snakeCell.position) cellList) then
-        ( field, player )
-
-    else
-        fieldCellMaybe
-            |> Maybe.map
-                (\( _, fieldCell ) ->
-                    let
-                        eat =
-                            (fieldCell == Block Oka && modBy 2 (List.length body) == 1)
-                                || (fieldCell == Block Da && modBy 2 (List.length body) == 0)
-                    in
-                    if fieldCell == Empty || eat then
-                        ( List.map
-                            (\( p, c ) ->
-                                if p == ( nextTopX, nextTopY ) then
-                                    ( p, Empty )
-
-                                else
-                                    ( p, c )
-                            )
-                            (allCells field)
-                            |> cellsToField
-                        , ( { head | position = ( nextTopX, nextTopY ), direction = direction }
-                          , List.append
-                                (List.indexedMap
-                                    (\i snakeCell ->
-                                        let
-                                            mayBeBefore =
-                                                Array.get i (Array.fromList cellList)
-                                        in
-                                        mayBeBefore
-                                            |> Maybe.map
-                                                (\before ->
-                                                    { snakeCell
-                                                        | position = before.position
-                                                        , direction = before.direction
-                                                    }
-                                                )
-                                            |> Maybe.withDefault snakeCell
-                                    )
-                                    body
-                                )
-                                (if eat then
-                                    List.head (List.reverse cellList)
-                                        |> Maybe.map
-                                            (\tail ->
-                                                [ { position = tail.position
-                                                  , okada =
-                                                        if fieldCell == Block Oka then
-                                                            Oka
-
-                                                        else
-                                                            Da
-                                                  , direction = tail.direction
-                                                  }
-                                                ]
-                                            )
-                                        |> Maybe.withDefault []
-
-                                 else
-                                    []
-                                )
-                          )
-                        )
-
-                    else
-                        ( field, player )
-                )
-            |> Maybe.withDefault
-                ( field, player )
-
-
 
 -- VIEW
-
-
-cellCount : Int
-cellCount =
-    10
-
-
-cellCountFloat : Float
-cellCountFloat =
-    toFloat cellCount
 
 
 cellSize : Int
@@ -364,7 +105,7 @@ cellSizeFloat =
     toFloat cellSize
 
 
-view : Model -> Html Msg
+view : Model.Model -> Html Msg
 view model =
     div
         [ style "padding" "1rem"
@@ -393,26 +134,26 @@ view model =
                 , style "align-items" "center"
                 ]
                 [ div []
-                    [ viewButton Up "Up"
+                    [ viewButton Model.Up "Up"
                     ]
                 , div []
-                    [ viewButton Left "Left"
-                    , viewButton Right "Right"
+                    [ viewButton Model.Left "Left"
+                    , viewButton Model.Right "Right"
                     ]
                 , div []
-                    [ viewButton Down "Down"
+                    [ viewButton Model.Down "Down"
                     ]
                 ]
             ]
         ]
 
 
-viewField : Model -> Html Msg
+viewField : Model.Model -> Html Msg
 viewField model =
     Svg.svg
         [ Svg.Attributes.width "400"
         , Svg.Attributes.height "400"
-        , Svg.Attributes.viewBox (interpolate "0 0 {0} {1}" [ String.fromInt (cellCount * cellSize), String.fromInt (cellCount * cellSize) ])
+        , Svg.Attributes.viewBox (interpolate "0 0 {0} {1}" [ String.fromInt (Model.cellCount * cellSize), String.fromInt (Model.cellCount * cellSize) ])
         , style "border" "1px solid black"
         ]
     <|
@@ -420,13 +161,13 @@ viewField model =
             ++ [ viewPlayer model.player ]
 
 
-viewRow : Row -> Int -> Html Msg
+viewRow : Model.Row -> Int -> Html Msg
 viewRow row y =
     Svg.g [] <|
         List.indexedMap (\x cell -> viewCell cell ( x, y )) row
 
 
-viewCell : Cell -> Position -> Html Msg
+viewCell : Model.Cell -> Model.Position -> Html Msg
 viewCell cell ( x, y ) =
     let
         gAttr =
@@ -441,7 +182,7 @@ viewCell cell ( x, y ) =
             ]
     in
     case cell of
-        Block okada ->
+        Model.Block okada ->
             Svg.g
                 gAttr
                 [ Svg.rect
@@ -455,7 +196,7 @@ viewCell cell ( x, y ) =
                     , Svg.Attributes.textAnchor "middle"
                     ]
                     [ Svg.text
-                        (if okada == Oka then
+                        (if okada == Model.Oka then
                             "岡"
 
                          else
@@ -464,7 +205,7 @@ viewCell cell ( x, y ) =
                     ]
                 ]
 
-        Empty ->
+        Model.Empty ->
             Svg.g
                 gAttr
                 [ Svg.rect
@@ -473,14 +214,14 @@ viewCell cell ( x, y ) =
                 ]
 
 
-viewPlayer : Snake -> Html Msg
+viewPlayer : Model.Snake -> Html Msg
 viewPlayer player =
     let
         ( head, body ) =
             player
 
         cells =
-            snakeCells player
+            Model.snakeCells player
     in
     Svg.g []
         (List.append
@@ -504,7 +245,7 @@ viewPlayer player =
         )
 
 
-viewSnakeLine : SnakeCell -> SnakeCell -> Html Msg
+viewSnakeLine : Model.SnakeCell -> Model.SnakeCell -> Html Msg
 viewSnakeLine parent child =
     let
         ( parentX, parentY ) =
@@ -565,7 +306,7 @@ viewSnakeLine parent child =
         ]
 
 
-viewSnakeCell : Int -> SnakeCell -> Html Msg
+viewSnakeCell : Int -> Model.SnakeCell -> Html Msg
 viewSnakeCell index snakeCell =
     let
         ( ex, ey ) =
@@ -576,16 +317,16 @@ viewSnakeCell index snakeCell =
 
         direction =
             case snakeCell.direction of
-                Up ->
+                Model.Up ->
                     0
 
-                Right ->
+                Model.Right ->
                     90
 
-                Down ->
+                Model.Down ->
                     180
 
-                Left ->
+                Model.Left ->
                     -90
 
                 _ ->
@@ -634,7 +375,7 @@ viewSnakeCell index snakeCell =
             , Svg.Attributes.textAnchor "middle"
             ]
             [ Svg.text
-                (if snakeCell.okada == Oka then
+                (if snakeCell.okada == Model.Oka then
                     "岡"
 
                  else
@@ -644,7 +385,7 @@ viewSnakeCell index snakeCell =
         ]
 
 
-viewButton : Direction -> String -> Html Msg
+viewButton : Model.Direction -> String -> Html Msg
 viewButton step label =
     let
         buttonStyle =
@@ -657,11 +398,11 @@ viewButton step label =
     button (List.append buttonStyle [ onClick (Change step) ]) [ text label ]
 
 
-viewScore : Snake -> Html Msg
+viewScore : Model.Snake -> Html Msg
 viewScore player =
     let
         score =
-            List.length (snakeCells player) - 1
+            List.length (Model.snakeCells player) - 1
     in
     div
         [ style "padding" "0.2rem 1rem"
@@ -677,32 +418,32 @@ viewScore player =
 -- SUBSCRIPTIONS
 
 
-subscriptions : Model -> Sub Msg
+subscriptions : Model.Model -> Sub Msg
 subscriptions _ =
     Sub.batch
         [ onKeyDown (Decode.map Change keyDecoder)
         ]
 
 
-keyDecoder : Decode.Decoder Direction
+keyDecoder : Decode.Decoder Model.Direction
 keyDecoder =
     Decode.map toDirection (Decode.field "key" Decode.string)
 
 
-toDirection : String -> Direction
+toDirection : String -> Model.Direction
 toDirection string =
     case string of
         "ArrowLeft" ->
-            Left
+            Model.Left
 
         "ArrowRight" ->
-            Right
+            Model.Right
 
         "ArrowUp" ->
-            Up
+            Model.Up
 
         "ArrowDown" ->
-            Down
+            Model.Down
 
         _ ->
-            Other
+            Model.Other
