@@ -28,7 +28,7 @@ main =
 
 type alias Model =
     { field : Field
-    , steps : List Step
+    , steps : List Direction
     , player : Snake
     }
 
@@ -54,18 +54,28 @@ type Okada
 type alias SnakeCell =
     { position : Position
     , okada : Okada
+    , direction : Direction
     }
 
 
 type alias Snake =
-    List SnakeCell
+    ( SnakeCell, List SnakeCell )
+
+
+snakeCells : Snake -> List SnakeCell
+snakeCells snake =
+    let
+        ( head, body ) =
+            snake
+    in
+    List.append [ head ] body
 
 
 type alias Position =
     ( Int, Int )
 
 
-type Step
+type Direction
     = Left
     | Right
     | Up
@@ -78,11 +88,12 @@ init _ =
     ( { field =
             Array.repeat 10 <| Array.repeat 10 <| Empty
       , player =
-            [ { position = ( 0, cellCount - 4 ), okada = Oka }
-            , { position = ( 0, cellCount - 3 ), okada = Da }
-            , { position = ( 0, cellCount - 2 ), okada = Oka }
-            , { position = ( 0, cellCount - 1 ), okada = Da }
-            ]
+            ( { position = ( 0, cellCount - 4 ), okada = Oka, direction = Up }
+            , [ { position = ( 0, cellCount - 3 ), okada = Da, direction = Up }
+              , { position = ( 0, cellCount - 2 ), okada = Oka, direction = Up }
+              , { position = ( 0, cellCount - 1 ), okada = Da, direction = Up }
+              ]
+            )
       , steps = []
       }
     , Cmd.none
@@ -94,86 +105,103 @@ init _ =
 
 
 type Msg
-    = Change Step
+    = Change Direction
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        Change step ->
-            let
-                position =
-                    case step of
-                        Left ->
-                            ( -1, 0 )
-
-                        Right ->
-                            ( 1, 0 )
-
-                        Up ->
-                            ( 0, -1 )
-
-                        Down ->
-                            ( 0, 1 )
-
-                        Other ->
-                            ( 0, 0 )
-            in
+        Change direction ->
             ( { model
-                | player = movePlayer position model.player
-                , steps = List.append model.steps [ step ]
+                | player = movePlayer direction model.player
+                , steps = List.append model.steps [ direction ]
               }
             , Cmd.none
             )
 
 
-movePlayer : Position -> Snake -> Snake
-movePlayer ( dx, dy ) player =
-    Array.get 0 (Array.fromList player)
-        |> Maybe.map
-            (\top ->
+movePlayer : Direction -> Snake -> Snake
+movePlayer direction player =
+    let
+        ( dx, dy ) =
+            case direction of
+                Left ->
+                    ( -1, 0 )
+
+                Right ->
+                    ( 1, 0 )
+
+                Up ->
+                    ( 0, -1 )
+
+                Down ->
+                    ( 0, 1 )
+
+                Other ->
+                    ( 0, 0 )
+
+        ( head, body ) =
+            player
+
+        cellList =
+            snakeCells player
+
+        ( headX, headY ) =
+            head.position
+
+        nextTopX =
+            Basics.min (cellCount - 1) (Basics.max 0 (headX + dx))
+
+        nextTopY =
+            Basics.min (cellCount - 1) (Basics.max 0 (headY + dy))
+    in
+    if List.member ( nextTopX, nextTopY ) (List.map (\snakeCell -> snakeCell.position) cellList) then
+        player
+
+    else
+        ( { head | position = ( nextTopX, nextTopY ), direction = direction }
+        , List.indexedMap
+            (\i snakeCell ->
                 let
-                    ( topX, topY ) =
-                        top.position
-
-                    nextTopX =
-                        Basics.min (cellCount - 1) (Basics.max 0 (topX + dx))
-
-                    nextTopY =
-                        Basics.min (cellCount - 1) (Basics.max 0 (topY + dy))
+                    mayBeBefore =
+                        Array.get i (Array.fromList cellList)
                 in
-                if List.member ( nextTopX, nextTopY ) (List.map (\snakeCell -> snakeCell.position) player) then
-                    player
-
-                else
-                    List.indexedMap
-                        (\i snakeCell ->
-                            if i == 0 then
-                                { snakeCell | position = ( nextTopX, nextTopY ) }
-
-                            else
-                                { snakeCell
-                                    | position =
-                                        Array.get (i - 1) (Array.fromList player)
-                                            |> Maybe.map (\c -> c.position)
-                                            |> Maybe.withDefault snakeCell.position
-                                }
+                mayBeBefore
+                    |> Maybe.map
+                        (\before ->
+                            { snakeCell
+                                | position = before.position
+                                , direction = before.direction
+                            }
                         )
-                        player
+                    |> Maybe.withDefault snakeCell
             )
-        |> Maybe.withDefault player
+            body
+        )
 
 
 
 -- VIEW
 
 
+cellCount : Int
 cellCount =
     10
 
 
+cellCountFloat : Float
+cellCountFloat =
+    toFloat cellCount
+
+
+cellSize : Int
 cellSize =
     40
+
+
+cellSizeFloat : Float
+cellSizeFloat =
+    toFloat cellSize
 
 
 view : Model -> Html Msg
@@ -248,9 +276,9 @@ viewCell cell ( x, y ) =
                     rectAttr
                     []
                 , Svg.text_
-                    [ Svg.Attributes.x (String.fromFloat (cellSize * 0.5))
-                    , Svg.Attributes.y (String.fromFloat (cellSize * 0.55))
-                    , Svg.Attributes.fontSize (String.fromFloat (cellSize * 0.6))
+                    [ Svg.Attributes.x (String.fromFloat (cellSizeFloat * 0.5))
+                    , Svg.Attributes.y (String.fromFloat (cellSizeFloat * 0.55))
+                    , Svg.Attributes.fontSize (String.fromFloat (cellSizeFloat * 0.6))
                     , Svg.Attributes.dominantBaseline "middle"
                     , Svg.Attributes.textAnchor "middle"
                     ]
@@ -275,16 +303,176 @@ viewCell cell ( x, y ) =
 
 viewPlayer : Snake -> Html Msg
 viewPlayer player =
-    Svg.g [] <|
-        List.map viewSnakeCell player
+    let
+        ( head, body ) =
+            player
+
+        cells =
+            snakeCells player
+    in
+    Svg.g []
+        (List.append
+            (List.append
+                (List.indexedMap
+                    (\i child ->
+                        let
+                            mayBeBefore =
+                                Array.get i (Array.fromList cells)
+                        in
+                        mayBeBefore
+                            |> Maybe.map
+                                (\parent -> viewSnakeLine parent child)
+                            |> Maybe.withDefault (Svg.g [] [])
+                    )
+                    body
+                )
+                [ viewSnakeCell 0 head ]
+            )
+            (List.indexedMap (\i c -> viewSnakeCell (i + 1) c) body)
+        )
 
 
-viewSnakeCell : SnakeCell -> Html Msg
-viewSnakeCell snakeCell =
-    viewCell (Block snakeCell.okada) snakeCell.position
+viewSnakeLine : SnakeCell -> SnakeCell -> Html Msg
+viewSnakeLine parent child =
+    let
+        ( parentX, parentY ) =
+            parent.position
+
+        ( childX, childY ) =
+            child.position
+
+        ( dx, dy ) =
+            ( cellSizeFloat * 0.30, cellSizeFloat * 0.33 )
+
+        ( cx, cy ) =
+            ( (toFloat (parentX + childX) / 2 + 0.5) * cellSizeFloat, (toFloat (parentY + childY) / 2 + 0.5) * cellSizeFloat )
+
+        gAttr =
+            [ Svg.Attributes.transform
+                (interpolate
+                    "rotate({0}, {1}, {2})"
+                    [ if parentX == childX then
+                        "0"
+
+                      else
+                        "90"
+                    , String.fromFloat cx
+                    , String.fromFloat cy
+                    ]
+                )
+            ]
+
+        pathAttr =
+            [ Svg.Attributes.d
+                (interpolate
+                    "M {0} {1} Q {2} {3} {4} {5} L {6} {7} Q {8} {9} {10} {11}"
+                    [ String.fromFloat (cx + dx)
+                    , String.fromFloat (cy + dy)
+                    , String.fromFloat (cx - dx * 0.1)
+                    , String.fromFloat cy
+                    , String.fromFloat (cx + dx)
+                    , String.fromFloat (cy - dy)
+                    , String.fromFloat (cx - dx)
+                    , String.fromFloat (cy - dy)
+                    , String.fromFloat (cx + dx * 0.1)
+                    , String.fromFloat cy
+                    , String.fromFloat (cx - dx)
+                    , String.fromFloat (cy + dy)
+                    ]
+                )
+            , Svg.Attributes.stroke "black"
+            , Svg.Attributes.strokeWidth "2"
+            , Svg.Attributes.fill "white"
+            ]
+    in
+    Svg.g
+        gAttr
+        [ Svg.path
+            pathAttr
+            []
+        ]
 
 
-viewButton : Step -> String -> Html Msg
+viewSnakeCell : Int -> SnakeCell -> Html Msg
+viewSnakeCell index snakeCell =
+    let
+        ( ex, ey ) =
+            snakeCell.position
+
+        ( x, y ) =
+            ( toFloat (ex * cellSize), toFloat (ey * cellSize) )
+
+        direction =
+            case snakeCell.direction of
+                Up ->
+                    0
+
+                Right ->
+                    90
+
+                Down ->
+                    180
+
+                Left ->
+                    -90
+
+                _ ->
+                    0
+
+        gAttr =
+            [ Svg.Attributes.transform
+                (String.join " "
+                    [ interpolate "rotate({0}, {1}, {2})" [ String.fromInt direction, String.fromFloat (x + (cellSizeFloat / 2)), String.fromFloat (y + (cellSizeFloat / 2)) ]
+                    , interpolate "translate({0}, {1})" [ String.fromFloat x, String.fromFloat y ]
+                    ]
+                )
+            ]
+
+        circleAttr =
+            [ Svg.Attributes.cx (String.fromFloat (cellSizeFloat / 2))
+            , Svg.Attributes.cy (String.fromFloat (cellSizeFloat / 2))
+            , Svg.Attributes.r (String.fromFloat (cellSizeFloat * 0.36))
+            , Svg.Attributes.stroke
+                (if index == 0 then
+                    "tomato"
+
+                 else
+                    "black"
+                )
+            , Svg.Attributes.strokeWidth
+                (if index == 0 then
+                    "5"
+
+                 else
+                    "2"
+                )
+            , Svg.Attributes.fill "white"
+            ]
+    in
+    Svg.g
+        gAttr
+        [ Svg.circle
+            circleAttr
+            []
+        , Svg.text_
+            [ Svg.Attributes.x (String.fromFloat (cellSizeFloat * 0.5))
+            , Svg.Attributes.y (String.fromFloat (cellSizeFloat * 0.55))
+            , Svg.Attributes.fontSize (String.fromFloat (cellSizeFloat * 0.4))
+            , Svg.Attributes.dominantBaseline "middle"
+            , Svg.Attributes.textAnchor "middle"
+            ]
+            [ Svg.text
+                (if snakeCell.okada == Oka then
+                    "岡"
+
+                 else
+                    "田"
+                )
+            ]
+        ]
+
+
+viewButton : Direction -> String -> Html Msg
 viewButton step label =
     let
         buttonStyle =
@@ -302,18 +490,18 @@ viewButton step label =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions model =
+subscriptions _ =
     Sub.batch
         [ onKeyDown (Decode.map Change keyDecoder)
         ]
 
 
-keyDecoder : Decode.Decoder Step
+keyDecoder : Decode.Decoder Direction
 keyDecoder =
     Decode.map toDirection (Decode.field "key" Decode.string)
 
 
-toDirection : String -> Step
+toDirection : String -> Direction
 toDirection string =
     case string of
         "ArrowLeft" ->
