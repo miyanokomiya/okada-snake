@@ -16,7 +16,7 @@ import Svg.Attributes
 
 main : Program () Model.Model Msg
 main =
-    Browser.element
+    Browser.document
         { init = init
         , view = view
         , update = update
@@ -143,64 +143,75 @@ cellSizeFloat =
     toFloat cellSize
 
 
-view : Model.Model -> Html Msg
+view : Model.Model -> Browser.Document Msg
 view model =
     let
         isGameOver =
             Model.isGameOver model
     in
-    div
-        [ style "padding" "1rem"
-        , style "display" "flex"
-        , style "flex-direction" "column"
-        , style "align-items" "center"
-        ]
+    { title = "Okada Snake"
+    , body =
         [ div
-            [ style "position" "relative"
+            [ style "padding" "1rem"
             , style "display" "flex"
-            ]
-            (List.append
-                [ viewField model, nextExpandAfterView ( model.field, model.player ) ]
-                (if isGameOver then
-                    [ viewGameOver ]
-
-                 else
-                    []
-                )
-            )
-        , div
-            [ style "margin" "0.5rem"
-            , style "display" "flex"
-            , style "align-items" "flex-start"
-            , style "justify-content" "space-between"
+            , style "flex-direction" "column"
+            , style "align-items" "center"
             ]
             [ div
-                [ style "margin" "0 2rem"
+                [ style "position" "relative"
                 , style "display" "flex"
-                , style "flex-direction" "column"
                 ]
-                [ viewScore model
-                , viewResetButton
-                ]
+                (List.append
+                    [ viewField model, nextExpandAfterView ( model.field, model.player ) ]
+                    (if isGameOver then
+                        [ viewGameOver ]
+
+                     else
+                        []
+                    )
+                )
             , div
-                [ style "margin" "0 2rem"
+                [ style "margin" "0.5rem"
                 , style "display" "flex"
-                , style "flex-direction" "column"
-                , style "align-items" "center"
+                , style "align-items" "flex-start"
+                , style "justify-content" "space-between"
                 ]
-                [ div []
-                    [ viewButton Model.Up "Up"
+                [ div
+                    [ style "margin" "0 2rem"
+                    , style "display" "flex"
+                    , style "flex-direction" "column"
                     ]
-                , div []
-                    [ viewButton Model.Left "Left"
-                    , viewButton Model.Right "Right"
+                    [ viewScore model
+                    , viewResetButton
                     ]
-                , div []
-                    [ viewButton Model.Down "Down"
+                , div
+                    [ style "margin" "0 2rem"
+                    , style "display" "flex"
+                    , style "flex-direction" "column"
+                    , style "align-items" "center"
                     ]
+                    [ div []
+                        [ viewButton Model.Up "Up"
+                        ]
+                    , div []
+                        [ viewButton Model.Left "Left"
+                        , viewButton Model.Right "Right"
+                        ]
+                    , div []
+                        [ viewButton Model.Down "Down"
+                        ]
+                    ]
+                ]
+            , div []
+                [ a
+                    [ href "https://github.com/miyanokomiya/okada-snake"
+                    , style "font-size" "0.8rem"
+                    ]
+                    [ text "repository" ]
                 ]
             ]
         ]
+    }
 
 
 viewField : Model.Model -> Html Msg
