@@ -2,6 +2,7 @@ module Model exposing
     ( Cell(..)
     , Direction(..)
     , Model
+    , Field
     , Okada(..)
     , Position
     , Row
@@ -10,6 +11,7 @@ module Model exposing
     , allCells
     , cellCount
     , enablePositions
+    , expandField
     , generateBlock
     , isGameOver
     , movePlayer
@@ -21,16 +23,6 @@ import Array
 
 
 -- MODEL
-
-
-cellCount : Int
-cellCount =
-    16
-
-
-cellCountFloat : Float
-cellCountFloat =
-    toFloat cellCount
 
 
 type alias Model =
@@ -73,6 +65,11 @@ type alias Snake =
     ( SnakeCell, List SnakeCell )
 
 
+cellCount : Field -> Int
+cellCount field =
+    List.length field
+
+
 snakeCells : Snake -> List SnakeCell
 snakeCells snake =
     let
@@ -98,6 +95,12 @@ allCells field =
 
 cellsToField : List CellWithPosition -> Field
 cellsToField list =
+    let
+        count =
+            list
+                |> List.filter (\( ( x, _ ), _ ) -> x == 0)
+                |> List.length
+    in
     List.map
         (\axisY ->
             List.partition (\( ( _, y ), _ ) -> y == axisY) list
@@ -106,7 +109,7 @@ cellsToField list =
                    )
                 |> List.map (\( _, c ) -> c)
         )
-        (List.range 0 (cellCount - 1))
+        (List.range 0 (count - 1))
 
 
 filterCells : (CellWithPosition -> Bool) -> Field -> List CellWithPosition
@@ -144,6 +147,12 @@ type Direction
 
 
 -- UPDATE
+
+
+expandField : Field -> Field
+expandField field =
+    List.append field [ List.repeat (cellCount field) Empty ]
+        |> List.map (\row -> List.append row [ Empty ])
 
 
 generateBlock : ( Field, Snake ) -> Position -> Okada -> Field
@@ -201,10 +210,10 @@ movePlayer direction ( field, player ) =
             head.position
 
         nextTopX =
-            Basics.min (cellCount - 1) (Basics.max 0 (headX + dx))
+            Basics.min (cellCount field - 1) (Basics.max 0 (headX + dx))
 
         nextTopY =
-            Basics.min (cellCount - 1) (Basics.max 0 (headY + dy))
+            Basics.min (cellCount field - 1) (Basics.max 0 (headY + dy))
 
         fieldCellMaybe =
             List.head (filterCells (\( p, _ ) -> p == ( nextTopX, nextTopY )) field)
@@ -400,3 +409,4 @@ stepBlock cell =
 
         Empty ->
             Empty
+

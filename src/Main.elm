@@ -28,12 +28,27 @@ main =
 -- UPDATE
 
 
+initialCount : Int
+initialCount =
+    5
+
+
+score : Model.Snake -> Int
+score player =
+    List.length (Model.snakeCells player) - 1
+
+
+nextExpandAfter : ( Model.Field, Model.Snake ) -> Int
+nextExpandAfter ( field, player ) =
+    List.sum (List.range initialCount (Model.cellCount field)) - score player
+
+
 init : () -> ( Model.Model, Cmd Msg )
 init _ =
     ( { field =
-            List.repeat Model.cellCount <| List.repeat Model.cellCount <| Model.Empty
+            List.repeat initialCount <| List.repeat initialCount <| Model.Empty
       , player =
-            ( { position = ( 0, Model.cellCount - 1 ), okada = Model.Oka, direction = Model.Up }
+            ( { position = ( 0, initialCount - 1 ), okada = Model.Oka, direction = Model.Up }
             , []
             )
       , steps = []
@@ -56,6 +71,9 @@ update msg model =
 
             else
                 let
+                    count =
+                        Model.cellCount model.field
+
                     ( field, player ) =
                         Model.movePlayer direction ( model.field, model.player )
 
@@ -67,14 +85,24 @@ update msg model =
 
                     isMoved =
                         beforeHead.position /= head.position
+
+                    isExpanded =
+                        nextExpandAfter ( field, player ) == 0
+
+                    nextField =
+                        if isExpanded then
+                            Model.expandField field
+
+                        else
+                            field
                 in
                 if isMoved then
                     ( { model
                         | player = player
-                        , field = field
+                        , field = nextField
                         , steps = List.append model.steps [ direction ]
                       }
-                    , Random.generate GenerateBlock (Random.pair (Random.int 0 (Model.cellCount - 1)) (Random.int 0 (Model.cellCount - 1)))
+                    , Random.generate GenerateBlock (Random.pair (Random.int 0 (count - 1)) (Random.int 0 (count - 1)))
                     )
 
                 else
@@ -93,7 +121,7 @@ update msg model =
                     | field =
                         Model.generateBlock ( model.field, model.player )
                             pos
-                            (if modBy 4 (List.length model.steps) == 2 then
+                            (if modBy 4 (List.length model.steps) == 0 then
                                 Model.Oka
 
                              else
@@ -130,9 +158,12 @@ view model =
         , style "flex-direction" "column"
         , style "align-items" "center"
         ]
-        [ div [ style "position" "relative" ]
+        [ div
+            [ style "position" "relative"
+            , style "display" "flex"
+            ]
             (List.append
-                [ viewField model ]
+                [ viewField model, nextExpandAfterView ( model.field, model.player ) ]
                 (if isGameOver then
                     [ viewGameOver ]
 
@@ -175,13 +206,16 @@ view model =
 viewField : Model.Model -> Html Msg
 viewField model =
     let
+        count =
+            Model.cellCount model.field
+
         enablePositions =
             Model.enablePositions ( model.field, model.player )
     in
     Svg.svg
         [ Svg.Attributes.width "400"
         , Svg.Attributes.height "400"
-        , Svg.Attributes.viewBox (interpolate "0 0 {0} {1}" [ String.fromInt (Model.cellCount * cellSize), String.fromInt (Model.cellCount * cellSize) ])
+        , Svg.Attributes.viewBox (interpolate "0 0 {0} {1}" [ String.fromInt (count * cellSize), String.fromInt (count * cellSize) ])
         , style "border" "1px solid black"
         ]
     <|
@@ -228,9 +262,12 @@ viewCell cell ( x, y ) enable =
                         (case count of
                             1 ->
                                 "blue"
+
                             2 ->
                                 "red"
-                            _ -> "black"
+
+                            _ ->
+                                "black"
                         )
                     ]
                     [ Svg.text
@@ -438,16 +475,6 @@ viewButton step label =
 
 viewScore : Model.Model -> Html Msg
 viewScore model =
-    let
-        player =
-            model.player
-
-        score =
-            List.length (Model.snakeCells player) - 1
-
-        gameover =
-            Model.isGameOver model
-    in
     div
         [ style "padding" "0.2rem 1rem"
         , style "width" "5rem"
@@ -455,7 +482,7 @@ viewScore model =
         , style "color" "#fff"
         , style "background-color" "#333"
         ]
-        [ text (String.fromInt score) ]
+        [ text (String.fromInt (score model.player)) ]
 
 
 viewGameOver : Html Msg
@@ -506,3 +533,22 @@ toDirection string =
 
         _ ->
             Model.Other
+
+
+nextExpandAfterView : ( Model.Field, Model.Snake ) -> Html Msg
+nextExpandAfterView ( field, player ) =
+    div
+        [ style "position" "absolute"
+        , style "bottom" "0"
+        , style "right" "0"
+        , style "padding" "0 0.5rem"
+        , style "display" "flex"
+        , style "align-items" "center"
+        , style "justify-content" "center"
+        , style "transform" "translate(50%, 50%)"
+        , style "font-size" "1.2rem"
+        , style "background-color" "white"
+        , style "border" "4px solid lime"
+        , style "border-radius" "50%"
+        ]
+        [ text (String.fromInt (nextExpandAfter ( field, player ))) ]
