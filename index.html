@@ -2718,7 +2718,7 @@ var _VirtualDom_mapEventTuple = F2(function(func, tuple)
 var _VirtualDom_mapEventRecord = F2(function(func, record)
 {
 	return {
-		o: func(record.o),
+		q: func(record.q),
 		R: record.R,
 		O: record.O
 	}
@@ -2988,7 +2988,7 @@ function _VirtualDom_makeCallback(eventNode, initialHandler)
 		// 3 = Custom
 
 		var value = result.a;
-		var message = !tag ? value : tag < 3 ? value.a : value.o;
+		var message = !tag ? value : tag < 3 ? value.a : value.q;
 		var stopPropagation = tag == 1 ? value.b : tag == 3 && value.R;
 		var currentEventNode = (
 			stopPropagation && event.stopPropagation(),
@@ -5339,7 +5339,7 @@ var $elm$browser$Browser$element = _Browser_element;
 var $author$project$Model$Empty = {$: 1};
 var $author$project$Model$Oka = 0;
 var $author$project$Model$Up = 2;
-var $author$project$Model$cellCount = 16;
+var $author$project$Main$initialCount = 5;
 var $elm$core$Platform$Cmd$batch = _Platform_batch;
 var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
 var $elm$core$List$repeatHelp = F3(
@@ -5366,15 +5366,15 @@ var $elm$core$List$repeat = F2(
 var $author$project$Main$init = function (_v0) {
 	return _Utils_Tuple2(
 		{
-			s: A2(
+			j: A2(
 				$elm$core$List$repeat,
-				$author$project$Model$cellCount,
-				A2($elm$core$List$repeat, $author$project$Model$cellCount, $author$project$Model$Empty)),
-			p: _Utils_Tuple2(
+				$author$project$Main$initialCount,
+				A2($elm$core$List$repeat, $author$project$Main$initialCount, $author$project$Model$Empty)),
+			n: _Utils_Tuple2(
 				{
 					V: 2,
 					ad: 0,
-					B: _Utils_Tuple2(0, $author$project$Model$cellCount - 1)
+					B: _Utils_Tuple2(0, $author$project$Main$initialCount - 1)
 				},
 				_List_Nil),
 			H: _List_Nil
@@ -5830,6 +5830,30 @@ var $elm$core$List$append = F2(
 			return A3($elm$core$List$foldr, $elm$core$List$cons, ys, xs);
 		}
 	});
+var $author$project$Model$cellCount = function (field) {
+	return $elm$core$List$length(field);
+};
+var $author$project$Model$expandField = function (field) {
+	return A2(
+		$elm$core$List$map,
+		function (row) {
+			return A2(
+				$elm$core$List$append,
+				row,
+				_List_fromArray(
+					[$author$project$Model$Empty]));
+		},
+		A2(
+			$elm$core$List$append,
+			field,
+			_List_fromArray(
+				[
+					A2(
+					$elm$core$List$repeat,
+					$author$project$Model$cellCount(field),
+					$author$project$Model$Empty)
+				])));
+};
 var $elm$random$Random$Generate = $elm$core$Basics$identity;
 var $elm$random$Random$Seed = F2(
 	function (a, b) {
@@ -5932,6 +5956,17 @@ var $author$project$Model$Block = F2(
 	function (a, b) {
 		return {$: 0, a: a, b: b};
 	});
+var $elm$core$List$filter = F2(
+	function (isGood, list) {
+		return A3(
+			$elm$core$List$foldr,
+			F2(
+				function (x, xs) {
+					return isGood(x) ? A2($elm$core$List$cons, x, xs) : xs;
+				}),
+			_List_Nil,
+			list);
+	});
 var $elm$core$List$partition = F2(
 	function (pred, list) {
 		var step = F2(
@@ -5952,6 +5987,15 @@ var $elm$core$List$partition = F2(
 	});
 var $elm$core$List$sortBy = _List_sortBy;
 var $author$project$Model$cellsToField = function (list) {
+	var count = $elm$core$List$length(
+		A2(
+			$elm$core$List$filter,
+			function (_v6) {
+				var _v7 = _v6.a;
+				var x = _v7.a;
+				return !x;
+			},
+			list));
 	return A2(
 		$elm$core$List$map,
 		function (axisY) {
@@ -5981,7 +6025,7 @@ var $author$project$Model$cellsToField = function (list) {
 						},
 						list)));
 		},
-		A2($elm$core$List$range, 0, $author$project$Model$cellCount - 1));
+		A2($elm$core$List$range, 0, count - 1));
 };
 var $elm$core$List$concat = function (lists) {
 	return A3($elm$core$List$foldr, $elm$core$List$append, _List_Nil, lists);
@@ -6004,17 +6048,6 @@ var $author$project$Model$allCells = function (field) {
 				}),
 			field));
 };
-var $elm$core$List$filter = F2(
-	function (isGood, list) {
-		return A3(
-			$elm$core$List$foldr,
-			F2(
-				function (x, xs) {
-					return isGood(x) ? A2($elm$core$List$cons, x, xs) : xs;
-				}),
-			_List_Nil,
-			list);
-	});
 var $author$project$Model$filterCells = F2(
 	function (valid, field) {
 		return A2(
@@ -6368,11 +6401,11 @@ var $author$project$Model$movePlayer = F2(
 		var headY = _v3.b;
 		var nextTopX = A2(
 			$elm$core$Basics$min,
-			$author$project$Model$cellCount - 1,
+			$author$project$Model$cellCount(field) - 1,
 			A2($elm$core$Basics$max, 0, headX + dx));
 		var nextTopY = A2(
 			$elm$core$Basics$min,
-			$author$project$Model$cellCount - 1,
+			$author$project$Model$cellCount(field) - 1,
 			A2($elm$core$Basics$max, 0, headY + dy));
 		var fieldCellMaybe = $elm$core$List$head(
 			A2(
@@ -6472,6 +6505,22 @@ var $author$project$Model$movePlayer = F2(
 				fieldCellMaybe));
 	});
 var $elm$core$Basics$neq = _Utils_notEqual;
+var $author$project$Main$score = function (player) {
+	return $elm$core$List$length(
+		$author$project$Model$snakeCells(player)) - 1;
+};
+var $elm$core$List$sum = function (numbers) {
+	return A3($elm$core$List$foldl, $elm$core$Basics$add, 0, numbers);
+};
+var $author$project$Main$nextExpandAfter = function (_v0) {
+	var field = _v0.a;
+	var player = _v0.b;
+	return $elm$core$List$sum(
+		A2(
+			$elm$core$List$range,
+			$author$project$Main$initialCount,
+			$author$project$Model$cellCount(field))) - $author$project$Main$score(player);
+};
 var $elm$random$Random$map2 = F3(
 	function (func, _v0, _v1) {
 		var genA = _v0;
@@ -6506,23 +6555,27 @@ var $author$project$Main$update = F2(
 			if (direction === 4) {
 				return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
 			} else {
+				var count = $author$project$Model$cellCount(model.j);
 				var _v1 = A2(
 					$author$project$Model$movePlayer,
 					direction,
-					_Utils_Tuple2(model.s, model.p));
+					_Utils_Tuple2(model.j, model.n));
 				var field = _v1.a;
 				var player = _v1.b;
+				var isExpanded = !$author$project$Main$nextExpandAfter(
+					_Utils_Tuple2(field, player));
+				var nextField = isExpanded ? $author$project$Model$expandField(field) : field;
 				var _v2 = player;
 				var head = _v2.a;
-				var _v3 = model.p;
+				var _v3 = model.n;
 				var beforeHead = _v3.a;
 				var isMoved = !_Utils_eq(beforeHead.B, head.B);
 				return isMoved ? _Utils_Tuple2(
 					_Utils_update(
 						model,
 						{
-							s: field,
-							p: player,
+							j: nextField,
+							n: player,
 							H: A2(
 								$elm$core$List$append,
 								model.H,
@@ -6534,8 +6587,8 @@ var $author$project$Main$update = F2(
 						$author$project$Main$GenerateBlock,
 						A2(
 							$elm$random$Random$pair,
-							A2($elm$random$Random$int, 0, $author$project$Model$cellCount - 1),
-							A2($elm$random$Random$int, 0, $author$project$Model$cellCount - 1)))) : _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+							A2($elm$random$Random$int, 0, count - 1),
+							A2($elm$random$Random$int, 0, count - 1)))) : _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
 			}
 		} else {
 			var pos = msg.a;
@@ -6544,14 +6597,14 @@ var $author$project$Main$update = F2(
 				_Utils_update(
 					model,
 					{
-						s: A3(
+						j: A3(
 							$author$project$Model$generateBlock,
-							_Utils_Tuple2(model.s, model.p),
+							_Utils_Tuple2(model.j, model.n),
 							pos,
-							(A2(
+							(!A2(
 								$elm$core$Basics$modBy,
 								4,
-								$elm$core$List$length(model.H)) === 2) ? 0 : 1)
+								$elm$core$List$length(model.H))) ? 0 : 1)
 					}),
 				$elm$core$Platform$Cmd$none);
 		}
@@ -6628,10 +6681,40 @@ var $author$project$Model$enablePositions = function (_v0) {
 var $author$project$Model$isGameOver = function (model) {
 	return !$elm$core$List$length(
 		$author$project$Model$enablePositions(
-			_Utils_Tuple2(model.s, model.p)));
+			_Utils_Tuple2(model.j, model.n)));
 };
 var $elm$virtual_dom$VirtualDom$style = _VirtualDom_style;
 var $elm$html$Html$Attributes$style = $elm$virtual_dom$VirtualDom$style;
+var $elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
+var $elm$html$Html$text = $elm$virtual_dom$VirtualDom$text;
+var $author$project$Main$nextExpandAfterView = function (_v0) {
+	var field = _v0.a;
+	var player = _v0.b;
+	return A2(
+		$elm$html$Html$div,
+		_List_fromArray(
+			[
+				A2($elm$html$Html$Attributes$style, 'position', 'absolute'),
+				A2($elm$html$Html$Attributes$style, 'bottom', '0'),
+				A2($elm$html$Html$Attributes$style, 'right', '0'),
+				A2($elm$html$Html$Attributes$style, 'padding', '0 0.5rem'),
+				A2($elm$html$Html$Attributes$style, 'display', 'flex'),
+				A2($elm$html$Html$Attributes$style, 'align-items', 'center'),
+				A2($elm$html$Html$Attributes$style, 'justify-content', 'center'),
+				A2($elm$html$Html$Attributes$style, 'transform', 'translate(50%, 50%)'),
+				A2($elm$html$Html$Attributes$style, 'font-size', '1.2rem'),
+				A2($elm$html$Html$Attributes$style, 'background-color', 'white'),
+				A2($elm$html$Html$Attributes$style, 'border', '4px solid lime'),
+				A2($elm$html$Html$Attributes$style, 'border-radius', '50%')
+			]),
+		_List_fromArray(
+			[
+				$elm$html$Html$text(
+				$elm$core$String$fromInt(
+					$author$project$Main$nextExpandAfter(
+						_Utils_Tuple2(field, player))))
+			]));
+};
 var $elm$html$Html$button = _VirtualDom_node('button');
 var $elm$virtual_dom$VirtualDom$Normal = function (a) {
 	return {$: 0, a: a};
@@ -6650,8 +6733,6 @@ var $elm$html$Html$Events$onClick = function (msg) {
 		'click',
 		$elm$json$Json$Decode$succeed(msg));
 };
-var $elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
-var $elm$html$Html$text = $elm$virtual_dom$VirtualDom$text;
 var $author$project$Main$viewButton = F2(
 	function (step, label) {
 		var buttonStyle = _List_fromArray(
@@ -7034,7 +7115,8 @@ var $author$project$Main$viewPlayer = function (player) {
 };
 var $author$project$Main$viewField = function (model) {
 	var enablePositions = $author$project$Model$enablePositions(
-		_Utils_Tuple2(model.s, model.p));
+		_Utils_Tuple2(model.j, model.n));
+	var count = $author$project$Model$cellCount(model.j);
 	return A2(
 		$elm$svg$Svg$svg,
 		_List_fromArray(
@@ -7047,8 +7129,8 @@ var $author$project$Main$viewField = function (model) {
 					'0 0 {0} {1}',
 					_List_fromArray(
 						[
-							$elm$core$String$fromInt($author$project$Model$cellCount * $author$project$Main$cellSize),
-							$elm$core$String$fromInt($author$project$Model$cellCount * $author$project$Main$cellSize)
+							$elm$core$String$fromInt(count * $author$project$Main$cellSize),
+							$elm$core$String$fromInt(count * $author$project$Main$cellSize)
 						]))),
 				A2($elm$html$Html$Attributes$style, 'border', '1px solid black')
 			]),
@@ -7064,10 +7146,10 @@ var $author$project$Main$viewField = function (model) {
 						p,
 						A2($elm$core$List$member, p, enablePositions));
 				},
-				$author$project$Model$allCells(model.s)),
+				$author$project$Model$allCells(model.j)),
 			_List_fromArray(
 				[
-					$author$project$Main$viewPlayer(model.p)
+					$author$project$Main$viewPlayer(model.n)
 				])));
 };
 var $author$project$Main$viewGameOver = A2(
@@ -7088,10 +7170,6 @@ var $author$project$Main$viewGameOver = A2(
 			$elm$html$Html$text('Game Over')
 		]));
 var $author$project$Main$viewScore = function (model) {
-	var player = model.p;
-	var score = $elm$core$List$length(
-		$author$project$Model$snakeCells(player)) - 1;
-	var gameover = $author$project$Model$isGameOver(model);
 	return A2(
 		$elm$html$Html$div,
 		_List_fromArray(
@@ -7105,7 +7183,8 @@ var $author$project$Main$viewScore = function (model) {
 		_List_fromArray(
 			[
 				$elm$html$Html$text(
-				$elm$core$String$fromInt(score))
+				$elm$core$String$fromInt(
+					$author$project$Main$score(model.n)))
 			]));
 };
 var $author$project$Main$view = function (model) {
@@ -7125,13 +7204,16 @@ var $author$project$Main$view = function (model) {
 				$elm$html$Html$div,
 				_List_fromArray(
 					[
-						A2($elm$html$Html$Attributes$style, 'position', 'relative')
+						A2($elm$html$Html$Attributes$style, 'position', 'relative'),
+						A2($elm$html$Html$Attributes$style, 'display', 'flex')
 					]),
 				A2(
 					$elm$core$List$append,
 					_List_fromArray(
 						[
-							$author$project$Main$viewField(model)
+							$author$project$Main$viewField(model),
+							$author$project$Main$nextExpandAfterView(
+							_Utils_Tuple2(model.j, model.n))
 						]),
 					isGameOver ? _List_fromArray(
 						[$author$project$Main$viewGameOver]) : _List_Nil)),
