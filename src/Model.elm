@@ -1,8 +1,8 @@
 module Model exposing
     ( Cell(..)
     , Direction(..)
-    , Model
     , Field
+    , Model
     , Okada(..)
     , Position
     , Row
@@ -149,10 +149,74 @@ type Direction
 -- UPDATE
 
 
-expandField : Field -> Field
-expandField field =
-    List.append field [ List.repeat (cellCount field) Empty ]
-        |> List.map (\row -> List.append row [ Empty ])
+expandField : ( Field, Snake ) -> ( Field, Snake )
+expandField ( field, player ) =
+    ( allCells field
+        |> expandFieldMinus
+        |> shiftFieldXY
+        |> expandFieldPlus
+        |> cellsToField
+    , shiftSnake player
+    )
+
+
+shiftSnake : Snake -> Snake
+shiftSnake ( head, body ) =
+    ( shiftSnakeCell head
+    , List.map shiftSnakeCell body
+    )
+
+
+shiftSnakeCell : SnakeCell -> SnakeCell
+shiftSnakeCell sc =
+    let
+        ( x, y ) =
+            sc.position
+    in
+    { sc | position = ( x + 1, y + 1 ) }
+
+
+shiftFieldXY : List CellWithPosition -> List CellWithPosition
+shiftFieldXY list =
+    list |> List.map (\( ( x, y ), c ) -> ( ( x + 1, y + 1 ), c ))
+
+
+expandFieldMinus : List CellWithPosition -> List CellWithPosition
+expandFieldMinus list =
+    let
+        count =
+            list
+                |> List.filter (\( ( x, _ ), _ ) -> x == 0)
+                |> List.length
+    in
+    list
+        |> List.append
+            (List.range 0 (count - 1)
+                |> List.map (\x -> ( ( x, -1 ), Empty ))
+            )
+        |> List.append
+            (List.range -1 (count - 1)
+                |> List.map (\y -> ( ( -1, y ), Empty ))
+            )
+
+
+expandFieldPlus : List CellWithPosition -> List CellWithPosition
+expandFieldPlus list =
+    let
+        count =
+            list
+                |> List.filter (\( ( x, _ ), _ ) -> x == 0)
+                |> List.length
+    in
+    list
+        |> List.append
+            (List.range 0 (count - 1)
+                |> List.map (\x -> ( ( x, count ), Empty ))
+            )
+        |> List.append
+            (List.range 0 count
+                |> List.map (\y -> ( ( count, y ), Empty ))
+            )
 
 
 generateBlock : ( Field, Snake ) -> Position -> Okada -> Field
@@ -409,4 +473,3 @@ stepBlock cell =
 
         Empty ->
             Empty
-

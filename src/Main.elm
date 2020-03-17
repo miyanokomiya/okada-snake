@@ -40,7 +40,7 @@ score player =
 
 nextExpandAfter : ( Model.Field, Model.Snake ) -> Int
 nextExpandAfter ( field, player ) =
-    List.sum (List.range initialCount (Model.cellCount field)) - score player
+    List.sum (List.range (initialCount - 1) (Model.cellCount field - 1)) - score player
 
 
 init : () -> ( Model.Model, Cmd Msg )
@@ -89,16 +89,16 @@ update msg model =
                     isExpanded =
                         nextExpandAfter ( field, player ) == 0
 
-                    nextField =
+                    ( nextField, nextPlayer ) =
                         if isExpanded then
-                            Model.expandField field
+                            Model.expandField ( field, player )
 
                         else
-                            field
+                            ( field, player )
                 in
                 if isMoved then
                     ( { model
-                        | player = player
+                        | player = nextPlayer
                         , field = nextField
                         , steps = List.append model.steps [ direction ]
                       }
