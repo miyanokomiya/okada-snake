@@ -15,6 +15,7 @@ module Model exposing
     , generateBlock
     , isGameOver
     , movePlayer
+    , reset
     , snakeCells
     )
 
@@ -147,6 +148,18 @@ type Direction
 
 
 -- UPDATE
+
+
+reset : Int -> Model
+reset initialCount =
+    { field =
+        List.repeat initialCount <| List.repeat initialCount <| Empty
+    , player =
+        ( { position = ( 0, initialCount - 1 ), okada = Oka, direction = Up }
+        , []
+        )
+    , steps = []
+    }
 
 
 expandField : ( Field, Snake ) -> ( Field, Snake )

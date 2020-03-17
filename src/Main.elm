@@ -45,20 +45,14 @@ nextExpandAfter ( field, player ) =
 
 init : () -> ( Model.Model, Cmd Msg )
 init _ =
-    ( { field =
-            List.repeat initialCount <| List.repeat initialCount <| Model.Empty
-      , player =
-            ( { position = ( 0, initialCount - 1 ), okada = Model.Oka, direction = Model.Up }
-            , []
-            )
-      , steps = []
-      }
+    ( Model.reset initialCount
     , Cmd.none
     )
 
 
 type Msg
     = Change Model.Direction
+    | Reset
     | GenerateBlock Model.Position
 
 
@@ -107,6 +101,9 @@ update msg model =
 
                 else
                     ( model, Cmd.none )
+
+        Reset ->
+            ( Model.reset initialCount, Cmd.none )
 
         GenerateBlock pos ->
             let
@@ -179,8 +176,11 @@ view model =
             ]
             [ div
                 [ style "margin" "0 2rem"
+                , style "display" "flex"
+                , style "flex-direction" "column"
                 ]
                 [ viewScore model
+                , viewResetButton
                 ]
             , div
                 [ style "margin" "0 2rem"
@@ -471,6 +471,19 @@ viewButton step label =
             ]
     in
     button (List.append buttonStyle [ onClick (Change step) ]) [ text label ]
+
+
+viewResetButton : Html Msg
+viewResetButton =
+    let
+        buttonStyle =
+            [ style "margin-top" "0.5rem"
+            , style "width" "4rem"
+            , style "height" "1.5rem"
+            , style "border" "1px solid black"
+            ]
+    in
+    button (List.append buttonStyle [ onClick Reset ]) [ text "Reset" ]
 
 
 viewScore : Model.Model -> Html Msg
