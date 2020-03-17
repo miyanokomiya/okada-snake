@@ -5335,7 +5335,7 @@ var $elm$core$Task$perform = F2(
 		return $elm$core$Task$command(
 			A2($elm$core$Task$map, toMessage, task));
 	});
-var $elm$browser$Browser$element = _Browser_element;
+var $elm$browser$Browser$document = _Browser_document;
 var $author$project$Main$initialCount = 5;
 var $elm$core$Platform$Cmd$batch = _Platform_batch;
 var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
@@ -6705,7 +6705,22 @@ var $author$project$Main$update = F2(
 					$elm$core$Platform$Cmd$none);
 		}
 	});
+var $elm$html$Html$a = _VirtualDom_node('a');
 var $elm$html$Html$div = _VirtualDom_node('div');
+var $elm$json$Json$Encode$string = _Json_wrap;
+var $elm$html$Html$Attributes$stringProperty = F2(
+	function (key, string) {
+		return A2(
+			_VirtualDom_property,
+			key,
+			$elm$json$Json$Encode$string(string));
+	});
+var $elm$html$Html$Attributes$href = function (url) {
+	return A2(
+		$elm$html$Html$Attributes$stringProperty,
+		'href',
+		_VirtualDom_noJavaScriptUri(url));
+};
 var $author$project$Model$enableDirections = function (_v0) {
 	var field = _v0.a;
 	var player = _v0.b;
@@ -7308,42 +7323,17 @@ var $author$project$Main$viewScore = function (model) {
 };
 var $author$project$Main$view = function (model) {
 	var isGameOver = $author$project$Model$isGameOver(model);
-	return A2(
-		$elm$html$Html$div,
-		_List_fromArray(
-			[
-				A2($elm$html$Html$Attributes$style, 'padding', '1rem'),
-				A2($elm$html$Html$Attributes$style, 'display', 'flex'),
-				A2($elm$html$Html$Attributes$style, 'flex-direction', 'column'),
-				A2($elm$html$Html$Attributes$style, 'align-items', 'center')
-			]),
-		_List_fromArray(
+	return {
+		au: _List_fromArray(
 			[
 				A2(
 				$elm$html$Html$div,
 				_List_fromArray(
 					[
-						A2($elm$html$Html$Attributes$style, 'position', 'relative'),
-						A2($elm$html$Html$Attributes$style, 'display', 'flex')
-					]),
-				A2(
-					$elm$core$List$append,
-					_List_fromArray(
-						[
-							$author$project$Main$viewField(model),
-							$author$project$Main$nextExpandAfterView(
-							_Utils_Tuple2(model.l, model.q))
-						]),
-					isGameOver ? _List_fromArray(
-						[$author$project$Main$viewGameOver]) : _List_Nil)),
-				A2(
-				$elm$html$Html$div,
-				_List_fromArray(
-					[
-						A2($elm$html$Html$Attributes$style, 'margin', '0.5rem'),
+						A2($elm$html$Html$Attributes$style, 'padding', '1rem'),
 						A2($elm$html$Html$Attributes$style, 'display', 'flex'),
-						A2($elm$html$Html$Attributes$style, 'align-items', 'flex-start'),
-						A2($elm$html$Html$Attributes$style, 'justify-content', 'space-between')
+						A2($elm$html$Html$Attributes$style, 'flex-direction', 'column'),
+						A2($elm$html$Html$Attributes$style, 'align-items', 'center')
 					]),
 				_List_fromArray(
 					[
@@ -7351,53 +7341,101 @@ var $author$project$Main$view = function (model) {
 						$elm$html$Html$div,
 						_List_fromArray(
 							[
-								A2($elm$html$Html$Attributes$style, 'margin', '0 2rem'),
+								A2($elm$html$Html$Attributes$style, 'position', 'relative'),
+								A2($elm$html$Html$Attributes$style, 'display', 'flex')
+							]),
+						A2(
+							$elm$core$List$append,
+							_List_fromArray(
+								[
+									$author$project$Main$viewField(model),
+									$author$project$Main$nextExpandAfterView(
+									_Utils_Tuple2(model.l, model.q))
+								]),
+							isGameOver ? _List_fromArray(
+								[$author$project$Main$viewGameOver]) : _List_Nil)),
+						A2(
+						$elm$html$Html$div,
+						_List_fromArray(
+							[
+								A2($elm$html$Html$Attributes$style, 'margin', '0.5rem'),
 								A2($elm$html$Html$Attributes$style, 'display', 'flex'),
-								A2($elm$html$Html$Attributes$style, 'flex-direction', 'column')
+								A2($elm$html$Html$Attributes$style, 'align-items', 'flex-start'),
+								A2($elm$html$Html$Attributes$style, 'justify-content', 'space-between')
 							]),
 						_List_fromArray(
 							[
-								$author$project$Main$viewScore(model),
-								$author$project$Main$viewResetButton
+								A2(
+								$elm$html$Html$div,
+								_List_fromArray(
+									[
+										A2($elm$html$Html$Attributes$style, 'margin', '0 2rem'),
+										A2($elm$html$Html$Attributes$style, 'display', 'flex'),
+										A2($elm$html$Html$Attributes$style, 'flex-direction', 'column')
+									]),
+								_List_fromArray(
+									[
+										$author$project$Main$viewScore(model),
+										$author$project$Main$viewResetButton
+									])),
+								A2(
+								$elm$html$Html$div,
+								_List_fromArray(
+									[
+										A2($elm$html$Html$Attributes$style, 'margin', '0 2rem'),
+										A2($elm$html$Html$Attributes$style, 'display', 'flex'),
+										A2($elm$html$Html$Attributes$style, 'flex-direction', 'column'),
+										A2($elm$html$Html$Attributes$style, 'align-items', 'center')
+									]),
+								_List_fromArray(
+									[
+										A2(
+										$elm$html$Html$div,
+										_List_Nil,
+										_List_fromArray(
+											[
+												A2($author$project$Main$viewButton, 2, 'Up')
+											])),
+										A2(
+										$elm$html$Html$div,
+										_List_Nil,
+										_List_fromArray(
+											[
+												A2($author$project$Main$viewButton, 0, 'Left'),
+												A2($author$project$Main$viewButton, 1, 'Right')
+											])),
+										A2(
+										$elm$html$Html$div,
+										_List_Nil,
+										_List_fromArray(
+											[
+												A2($author$project$Main$viewButton, 3, 'Down')
+											]))
+									]))
 							])),
 						A2(
 						$elm$html$Html$div,
-						_List_fromArray(
-							[
-								A2($elm$html$Html$Attributes$style, 'margin', '0 2rem'),
-								A2($elm$html$Html$Attributes$style, 'display', 'flex'),
-								A2($elm$html$Html$Attributes$style, 'flex-direction', 'column'),
-								A2($elm$html$Html$Attributes$style, 'align-items', 'center')
-							]),
+						_List_Nil,
 						_List_fromArray(
 							[
 								A2(
-								$elm$html$Html$div,
-								_List_Nil,
+								$elm$html$Html$a,
 								_List_fromArray(
 									[
-										A2($author$project$Main$viewButton, 2, 'Up')
-									])),
-								A2(
-								$elm$html$Html$div,
-								_List_Nil,
+										$elm$html$Html$Attributes$href('https://github.com/miyanokomiya/okada-snake'),
+										A2($elm$html$Html$Attributes$style, 'font-size', '0.8rem')
+									]),
 								_List_fromArray(
 									[
-										A2($author$project$Main$viewButton, 0, 'Left'),
-										A2($author$project$Main$viewButton, 1, 'Right')
-									])),
-								A2(
-								$elm$html$Html$div,
-								_List_Nil,
-								_List_fromArray(
-									[
-										A2($author$project$Main$viewButton, 3, 'Down')
+										$elm$html$Html$text('repository')
 									]))
 							]))
 					]))
-			]));
+			]),
+		aQ: 'Okada Snake'
+	};
 };
-var $author$project$Main$main = $elm$browser$Browser$element(
+var $author$project$Main$main = $elm$browser$Browser$document(
 	{aE: $author$project$Main$init, aP: $author$project$Main$subscriptions, aR: $author$project$Main$update, aS: $author$project$Main$view});
 _Platform_export({'Main':{'init':$author$project$Main$main(
 	$elm$json$Json$Decode$succeed(0))(0)}});}(this));
