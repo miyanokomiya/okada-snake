@@ -5336,7 +5336,7 @@ var $elm$core$Task$perform = F2(
 			A2($elm$core$Task$map, toMessage, task));
 	});
 var $elm$browser$Browser$document = _Browser_document;
-var $author$project$Main$initialCount = 5;
+var $author$project$Main$initialCount = 60;
 var $elm$core$Platform$Cmd$batch = _Platform_batch;
 var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
 var $author$project$Model$Empty = {$: 1};
@@ -6139,13 +6139,6 @@ var $author$project$Model$Block = F2(
 	function (a, b) {
 		return {$: 0, a: a, b: b};
 	});
-var $author$project$Model$filterCells = F2(
-	function (valid, field) {
-		return A2(
-			$elm$core$List$filter,
-			valid,
-			$author$project$Model$allCells(field));
-	});
 var $elm$core$List$any = F2(
 	function (isOkay, list) {
 		any:
@@ -6186,25 +6179,23 @@ var $author$project$Model$snakeCells = function (snake) {
 			[head]),
 		body);
 };
-var $author$project$Model$emptyCells = function (_v0) {
+var $author$project$Model$splitEmptyCells = function (_v0) {
 	var field = _v0.a;
 	var player = _v0.b;
+	var playerPositions = A2(
+		$elm$core$List$map,
+		function (sc) {
+			return sc.G;
+		},
+		$author$project$Model$snakeCells(player));
 	return A2(
-		$author$project$Model$filterCells,
+		$elm$core$List$partition,
 		function (_v1) {
 			var position = _v1.a;
 			var cell = _v1.b;
-			return _Utils_eq(cell, $author$project$Model$Empty) && (!A2(
-				$elm$core$List$member,
-				position,
-				A2(
-					$elm$core$List$map,
-					function (sc) {
-						return sc.G;
-					},
-					$author$project$Model$snakeCells(player))));
+			return _Utils_eq(cell, $author$project$Model$Empty) && (!A2($elm$core$List$member, position, playerPositions));
 		},
-		field);
+		$author$project$Model$allCells(field));
 };
 var $author$project$Model$stepBlock = function (cell) {
 	if (!cell.$) {
@@ -6237,40 +6228,28 @@ var $author$project$Model$generateBlock = F3(
 				return s.G;
 			},
 			$author$project$Model$snakeCells(player));
-		var empties = $author$project$Model$emptyCells(
+		var _v1 = $author$project$Model$splitEmptyCells(
 			_Utils_Tuple2(field, player));
-		var emptyPositions = A2(
-			$elm$core$List$map,
-			function (_v4) {
-				var pos = _v4.a;
-				return pos;
-			},
-			empties);
-		var notEmpty = A2(
-			$author$project$Model$filterCells,
-			function (_v3) {
-				var pos = _v3.a;
-				return !A2($elm$core$List$member, pos, emptyPositions);
-			},
-			field);
+		var empties = _v1.a;
+		var notEmpties = _v1.b;
 		return $author$project$Model$cellsToField(
 			A2(
 				$elm$core$List$append,
 				A2(
 					$elm$core$List$map,
-					function (_v1) {
-						var pos = _v1.a;
-						var cell = _v1.b;
+					function (_v2) {
+						var pos = _v2.a;
+						var cell = _v2.b;
 						return A2($elm$core$List$member, pos, playerPositions) ? _Utils_Tuple2(pos, cell) : _Utils_Tuple2(
 							pos,
 							$author$project$Model$stepBlock(cell));
 					},
-					notEmpty),
+					notEmpties),
 				A2(
 					$elm$core$List$map,
-					function (_v2) {
-						var position = _v2.a;
-						var cell = _v2.b;
+					function (_v3) {
+						var position = _v3.a;
+						var cell = _v3.b;
 						return _Utils_eq(position, p) ? _Utils_Tuple2(
 							position,
 							A2($author$project$Model$Block, okada, 2)) : _Utils_Tuple2(position, cell);
@@ -6366,6 +6345,13 @@ var $author$project$Model$directionToDiff = function (direction) {
 			return _Utils_Tuple2(0, 0);
 	}
 };
+var $author$project$Model$filterCells = F2(
+	function (valid, field) {
+		return A2(
+			$elm$core$List$filter,
+			valid,
+			$author$project$Model$allCells(field));
+	});
 var $elm$core$Array$fromListHelp = F3(
 	function (list, nodeList, nodeListSize) {
 		fromListHelp:
@@ -6477,6 +6463,7 @@ var $author$project$Model$movePlayer = F2(
 	function (direction, _v0) {
 		var field = _v0.a;
 		var player = _v0.b;
+		var targetCells = $author$project$Model$allCells(field);
 		var cellList = $author$project$Model$snakeCells(player);
 		var _v1 = $author$project$Model$directionToDiff(direction);
 		var dx = _v1.a;
@@ -6539,7 +6526,7 @@ var $author$project$Model$movePlayer = F2(
 										p,
 										canEat ? $author$project$Model$Empty : fieldCell) : _Utils_Tuple2(p, c);
 								},
-								$author$project$Model$allCells(field))),
+								targetCells)),
 						_Utils_Tuple2(
 							_Utils_update(
 								head,
@@ -6724,6 +6711,7 @@ var $elm$html$Html$Attributes$href = function (url) {
 var $author$project$Model$enableDirections = function (_v0) {
 	var field = _v0.a;
 	var player = _v0.b;
+	var targetCells = $author$project$Model$allCells(field);
 	var _v1 = player;
 	var head = _v1.a;
 	var _v2 = head.G;
@@ -6749,7 +6737,7 @@ var $author$project$Model$enableDirections = function (_v0) {
 							player,
 							_Utils_Tuple2(p, c));
 					},
-					$author$project$Model$allCells(field));
+					targetCells);
 			},
 			_List_fromArray(
 				[
