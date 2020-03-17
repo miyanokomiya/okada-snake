@@ -30,7 +30,7 @@ main =
 
 initialCount : Int
 initialCount =
-    5
+  60
 
 
 score : Model.Snake -> Int

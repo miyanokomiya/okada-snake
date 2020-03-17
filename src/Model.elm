@@ -119,19 +119,20 @@ filterCells valid field =
         |> List.filter valid
 
 
-emptyCells : ( Field, Snake ) -> List CellWithPosition
-emptyCells ( field, player ) =
-    filterCells
-        (\( position, cell ) ->
-            cell
-                == Empty
-                && List.member position
-                    (snakeCells player
-                        |> List.map (\sc -> sc.position)
-                    )
-                == False
-        )
-        field
+splitEmptyCells : ( Field, Snake ) -> ( List CellWithPosition, List CellWithPosition )
+splitEmptyCells ( field, player ) =
+    let
+        playerPositions =
+            List.map (\sc -> sc.position) (snakeCells player)
+    in
+    allCells field
+        |> List.partition
+            (\( position, cell ) ->
+                cell
+                    == Empty
+                    && List.member position playerPositions
+                    == False
+            )
 
 
 type alias Position =
@@ -235,28 +236,22 @@ expandFieldPlus list =
 generateBlock : ( Field, Snake ) -> Position -> Okada -> Field
 generateBlock ( field, player ) p okada =
     let
-        empties =
-            emptyCells ( field, player )
-
-        emptyPositions =
-            List.map (\( pos, _ ) -> pos) empties
-
-        notEmpty =
-            filterCells (\( pos, _ ) -> List.member pos emptyPositions == False) field
+        ( empties, notEmpties ) =
+            splitEmptyCells ( field, player )
 
         playerPositions =
             List.map (\s -> s.position) (snakeCells player)
     in
     List.append
-        (List.map
-            (\( pos, cell ) ->
-                if List.member pos playerPositions then
-                    ( pos, cell )
+        (notEmpties
+            |> List.map
+                (\( pos, cell ) ->
+                    if List.member pos playerPositions then
+                        ( pos, cell )
 
-                else
-                    ( pos, stepBlock cell )
-            )
-            notEmpty
+                    else
+                        ( pos, stepBlock cell )
+                )
         )
         (empties
             |> List.map
@@ -294,6 +289,9 @@ movePlayer direction ( field, player ) =
 
         fieldCellMaybe =
             List.head (filterCells (\( p, _ ) -> p == ( nextTopX, nextTopY )) field)
+
+        targetCells =
+            allCells field
     in
     if List.member ( nextTopX, nextTopY ) (List.map (\snakeCell -> snakeCell.position) cellList) then
         ( field, player )
@@ -324,7 +322,7 @@ movePlayer direction ( field, player ) =
                                 else
                                     ( p, c )
                             )
-                            (allCells field)
+                            targetCells
                             |> cellsToField
                         , ( { head | position = ( nextTopX, nextTopY ), direction = direction }
                           , List.append
@@ -431,6 +429,9 @@ enableDirections ( field, player ) =
 
         ( x, y ) =
             head.position
+
+        targetCells =
+            allCells field
     in
     [ ( Up, ( x, y - 1 ) )
     , ( Down, ( x, y + 1 ) )
@@ -439,7 +440,7 @@ enableDirections ( field, player ) =
     ]
         |> List.filter
             (\( _, dp ) ->
-                allCells field
+                targetCells
                     |> List.any
                         (\( p, c ) ->
                             p == dp && canMoveCell player ( p, c )
