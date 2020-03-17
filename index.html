@@ -5833,26 +5833,206 @@ var $elm$core$List$append = F2(
 var $author$project$Model$cellCount = function (field) {
 	return $elm$core$List$length(field);
 };
-var $author$project$Model$expandField = function (field) {
+var $elm$core$List$concat = function (lists) {
+	return A3($elm$core$List$foldr, $elm$core$List$append, _List_Nil, lists);
+};
+var $author$project$Model$allCells = function (field) {
+	return $elm$core$List$concat(
+		A2(
+			$elm$core$List$indexedMap,
+			F2(
+				function (y, row) {
+					return A2(
+						$elm$core$List$indexedMap,
+						F2(
+							function (x, cell) {
+								return _Utils_Tuple2(
+									_Utils_Tuple2(x, y),
+									cell);
+							}),
+						row);
+				}),
+			field));
+};
+var $elm$core$List$filter = F2(
+	function (isGood, list) {
+		return A3(
+			$elm$core$List$foldr,
+			F2(
+				function (x, xs) {
+					return isGood(x) ? A2($elm$core$List$cons, x, xs) : xs;
+				}),
+			_List_Nil,
+			list);
+	});
+var $elm$core$List$partition = F2(
+	function (pred, list) {
+		var step = F2(
+			function (x, _v0) {
+				var trues = _v0.a;
+				var falses = _v0.b;
+				return pred(x) ? _Utils_Tuple2(
+					A2($elm$core$List$cons, x, trues),
+					falses) : _Utils_Tuple2(
+					trues,
+					A2($elm$core$List$cons, x, falses));
+			});
+		return A3(
+			$elm$core$List$foldr,
+			step,
+			_Utils_Tuple2(_List_Nil, _List_Nil),
+			list);
+	});
+var $elm$core$List$sortBy = _List_sortBy;
+var $author$project$Model$cellsToField = function (list) {
+	var count = $elm$core$List$length(
+		A2(
+			$elm$core$List$filter,
+			function (_v6) {
+				var _v7 = _v6.a;
+				var x = _v7.a;
+				return !x;
+			},
+			list));
 	return A2(
 		$elm$core$List$map,
-		function (row) {
+		function (axisY) {
 			return A2(
-				$elm$core$List$append,
-				row,
-				_List_fromArray(
-					[$author$project$Model$Empty]));
+				$elm$core$List$map,
+				function (_v5) {
+					var c = _v5.b;
+					return c;
+				},
+				function (_v2) {
+					var group = _v2.a;
+					return A2(
+						$elm$core$List$sortBy,
+						function (_v3) {
+							var _v4 = _v3.a;
+							var x = _v4.a;
+							return x;
+						},
+						group);
+				}(
+					A2(
+						$elm$core$List$partition,
+						function (_v0) {
+							var _v1 = _v0.a;
+							var y = _v1.b;
+							return _Utils_eq(y, axisY);
+						},
+						list)));
 		},
+		A2($elm$core$List$range, 0, count - 1));
+};
+var $elm$core$Basics$negate = function (n) {
+	return -n;
+};
+var $author$project$Model$expandFieldMinus = function (list) {
+	var count = $elm$core$List$length(
+		A2(
+			$elm$core$List$filter,
+			function (_v0) {
+				var _v1 = _v0.a;
+				var x = _v1.a;
+				return !x;
+			},
+			list));
+	return A2(
+		$elm$core$List$append,
+		A2(
+			$elm$core$List$map,
+			function (y) {
+				return _Utils_Tuple2(
+					_Utils_Tuple2(-1, y),
+					$author$project$Model$Empty);
+			},
+			A2($elm$core$List$range, -1, count - 1)),
 		A2(
 			$elm$core$List$append,
-			field,
-			_List_fromArray(
-				[
-					A2(
-					$elm$core$List$repeat,
-					$author$project$Model$cellCount(field),
-					$author$project$Model$Empty)
-				])));
+			A2(
+				$elm$core$List$map,
+				function (x) {
+					return _Utils_Tuple2(
+						_Utils_Tuple2(x, -1),
+						$author$project$Model$Empty);
+				},
+				A2($elm$core$List$range, 0, count - 1)),
+			list));
+};
+var $author$project$Model$expandFieldPlus = function (list) {
+	var count = $elm$core$List$length(
+		A2(
+			$elm$core$List$filter,
+			function (_v0) {
+				var _v1 = _v0.a;
+				var x = _v1.a;
+				return !x;
+			},
+			list));
+	return A2(
+		$elm$core$List$append,
+		A2(
+			$elm$core$List$map,
+			function (y) {
+				return _Utils_Tuple2(
+					_Utils_Tuple2(count, y),
+					$author$project$Model$Empty);
+			},
+			A2($elm$core$List$range, 0, count)),
+		A2(
+			$elm$core$List$append,
+			A2(
+				$elm$core$List$map,
+				function (x) {
+					return _Utils_Tuple2(
+						_Utils_Tuple2(x, count),
+						$author$project$Model$Empty);
+				},
+				A2($elm$core$List$range, 0, count - 1)),
+			list));
+};
+var $author$project$Model$shiftFieldXY = function (list) {
+	return A2(
+		$elm$core$List$map,
+		function (_v0) {
+			var _v1 = _v0.a;
+			var x = _v1.a;
+			var y = _v1.b;
+			var c = _v0.b;
+			return _Utils_Tuple2(
+				_Utils_Tuple2(x + 1, y + 1),
+				c);
+		},
+		list);
+};
+var $author$project$Model$shiftSnakeCell = function (sc) {
+	var _v0 = sc.B;
+	var x = _v0.a;
+	var y = _v0.b;
+	return _Utils_update(
+		sc,
+		{
+			B: _Utils_Tuple2(x + 1, y + 1)
+		});
+};
+var $author$project$Model$shiftSnake = function (_v0) {
+	var head = _v0.a;
+	var body = _v0.b;
+	return _Utils_Tuple2(
+		$author$project$Model$shiftSnakeCell(head),
+		A2($elm$core$List$map, $author$project$Model$shiftSnakeCell, body));
+};
+var $author$project$Model$expandField = function (_v0) {
+	var field = _v0.a;
+	var player = _v0.b;
+	return _Utils_Tuple2(
+		$author$project$Model$cellsToField(
+			$author$project$Model$expandFieldPlus(
+				$author$project$Model$shiftFieldXY(
+					$author$project$Model$expandFieldMinus(
+						$author$project$Model$allCells(field))))),
+		$author$project$Model$shiftSnake(player));
 };
 var $elm$random$Random$Generate = $elm$core$Basics$identity;
 var $elm$random$Random$Seed = F2(
@@ -5956,98 +6136,6 @@ var $author$project$Model$Block = F2(
 	function (a, b) {
 		return {$: 0, a: a, b: b};
 	});
-var $elm$core$List$filter = F2(
-	function (isGood, list) {
-		return A3(
-			$elm$core$List$foldr,
-			F2(
-				function (x, xs) {
-					return isGood(x) ? A2($elm$core$List$cons, x, xs) : xs;
-				}),
-			_List_Nil,
-			list);
-	});
-var $elm$core$List$partition = F2(
-	function (pred, list) {
-		var step = F2(
-			function (x, _v0) {
-				var trues = _v0.a;
-				var falses = _v0.b;
-				return pred(x) ? _Utils_Tuple2(
-					A2($elm$core$List$cons, x, trues),
-					falses) : _Utils_Tuple2(
-					trues,
-					A2($elm$core$List$cons, x, falses));
-			});
-		return A3(
-			$elm$core$List$foldr,
-			step,
-			_Utils_Tuple2(_List_Nil, _List_Nil),
-			list);
-	});
-var $elm$core$List$sortBy = _List_sortBy;
-var $author$project$Model$cellsToField = function (list) {
-	var count = $elm$core$List$length(
-		A2(
-			$elm$core$List$filter,
-			function (_v6) {
-				var _v7 = _v6.a;
-				var x = _v7.a;
-				return !x;
-			},
-			list));
-	return A2(
-		$elm$core$List$map,
-		function (axisY) {
-			return A2(
-				$elm$core$List$map,
-				function (_v5) {
-					var c = _v5.b;
-					return c;
-				},
-				function (_v2) {
-					var group = _v2.a;
-					return A2(
-						$elm$core$List$sortBy,
-						function (_v3) {
-							var _v4 = _v3.a;
-							var x = _v4.a;
-							return x;
-						},
-						group);
-				}(
-					A2(
-						$elm$core$List$partition,
-						function (_v0) {
-							var _v1 = _v0.a;
-							var y = _v1.b;
-							return _Utils_eq(y, axisY);
-						},
-						list)));
-		},
-		A2($elm$core$List$range, 0, count - 1));
-};
-var $elm$core$List$concat = function (lists) {
-	return A3($elm$core$List$foldr, $elm$core$List$append, _List_Nil, lists);
-};
-var $author$project$Model$allCells = function (field) {
-	return $elm$core$List$concat(
-		A2(
-			$elm$core$List$indexedMap,
-			F2(
-				function (y, row) {
-					return A2(
-						$elm$core$List$indexedMap,
-						F2(
-							function (x, cell) {
-								return _Utils_Tuple2(
-									_Utils_Tuple2(x, y),
-									cell);
-							}),
-						row);
-				}),
-			field));
-};
 var $author$project$Model$filterCells = F2(
 	function (valid, field) {
 		return A2(
@@ -6187,9 +6275,6 @@ var $author$project$Model$generateBlock = F3(
 					empties)));
 	});
 var $elm$core$Bitwise$and = _Bitwise_and;
-var $elm$core$Basics$negate = function (n) {
-	return -n;
-};
 var $elm$core$Bitwise$xor = _Bitwise_xor;
 var $elm$random$Random$peel = function (_v0) {
 	var state = _v0.a;
@@ -6518,8 +6603,8 @@ var $author$project$Main$nextExpandAfter = function (_v0) {
 	return $elm$core$List$sum(
 		A2(
 			$elm$core$List$range,
-			$author$project$Main$initialCount,
-			$author$project$Model$cellCount(field))) - $author$project$Main$score(player);
+			$author$project$Main$initialCount - 1,
+			$author$project$Model$cellCount(field) - 1)) - $author$project$Main$score(player);
 };
 var $elm$random$Random$map2 = F3(
 	function (func, _v0, _v1) {
@@ -6564,18 +6649,21 @@ var $author$project$Main$update = F2(
 				var player = _v1.b;
 				var isExpanded = !$author$project$Main$nextExpandAfter(
 					_Utils_Tuple2(field, player));
-				var nextField = isExpanded ? $author$project$Model$expandField(field) : field;
-				var _v2 = player;
-				var head = _v2.a;
-				var _v3 = model.n;
-				var beforeHead = _v3.a;
+				var _v2 = isExpanded ? $author$project$Model$expandField(
+					_Utils_Tuple2(field, player)) : _Utils_Tuple2(field, player);
+				var nextField = _v2.a;
+				var nextPlayer = _v2.b;
+				var _v3 = player;
+				var head = _v3.a;
+				var _v4 = model.n;
+				var beforeHead = _v4.a;
 				var isMoved = !_Utils_eq(beforeHead.B, head.B);
 				return isMoved ? _Utils_Tuple2(
 					_Utils_update(
 						model,
 						{
 							j: nextField,
-							n: player,
+							n: nextPlayer,
 							H: A2(
 								$elm$core$List$append,
 								model.H,
