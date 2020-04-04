@@ -30,7 +30,7 @@ main =
 
 initialCount : Int
 initialCount =
-  5
+    5
 
 
 score : Model.Snake -> Int
@@ -205,6 +205,8 @@ view model =
             , div []
                 [ a
                     [ href "https://github.com/miyanokomiya/okada-snake"
+                    , Html.Attributes.target "_blank"
+                    , Html.Attributes.rel "noopener"
                     , style "font-size" "0.8rem"
                     ]
                     [ text "repository" ]
